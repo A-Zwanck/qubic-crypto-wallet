@@ -139,10 +139,8 @@ const Index = () => {
               <div className="w-12 h-12 bg-qubic-blue/10 rounded-lg flex items-center justify-center mb-4">
                 <Shield size={24} className="text-qubic-blue" />
               </div>
-              <h3 className="text-xl font-semibold text-qubic-black mb-2">Seguridad Total</h3>
-              <p className="text-qubic-gray-dark">
-                Protección de nivel bancario para tus activos con encriptación de última generación y autenticación de dos factores.
-              </p>
+              <h3 className="text-xl font-semibold text-qubic-black mb-2">Seguridad Financiera</h3>
+              <p className="text-qubic-gray-dark">Qubic selecciona para ti los productos financieros más seguros y rentables.</p>
             </div>
             
             {/* Feature 2 */}
