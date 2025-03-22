@@ -277,7 +277,7 @@ const Index = () => {
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
                         <span className="text-qubic-gray-dark">Transferencias</span>
-                        <span className="font-medium text-red-600">5-20$ por tx</span>
+                        <span className="font-medium text-red-600">5-20€ por tx</span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-qubic-gray-dark">Depósitos</span>
@@ -285,7 +285,7 @@ const Index = () => {
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-qubic-gray-dark">Retiros</span>
-                        <span className="font-medium text-red-600">5-30$ por tx</span>
+                        <span className="font-medium text-red-600">5-30€ por tx</span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-qubic-gray-dark">Informes fiscales</span>
