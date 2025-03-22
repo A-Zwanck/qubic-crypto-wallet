@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, LogOut, ChevronDown } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -10,6 +12,7 @@ const Navbar = () => {
 
   // Check if user is authenticated - this is a placeholder
   const isAuthenticated = location.pathname !== '/' && location.pathname !== '/login';
+
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
@@ -17,13 +20,20 @@ const Navbar = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
+
   return <header className={cn("fixed top-0 w-full z-50 transition-all duration-300 py-4 px-4 md:px-8", isScrolled ? "bg-white/90 backdrop-blur-md shadow-sm" : "bg-transparent")}>
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center">
+          <img 
+            src="/lovable-uploads/b03c2db2-fc71-4f87-adb6-a8bf8b75a9fd.png" 
+            alt="Qubic Logo" 
+            className="h-7 mr-2" 
+          />
           <span className="text-qubic-black font-bold text-xl md:text-2xl">WALLET</span>
         </Link>
 
@@ -101,4 +111,5 @@ const Navbar = () => {
       </div>
     </header>;
 };
+
 export default Navbar;
