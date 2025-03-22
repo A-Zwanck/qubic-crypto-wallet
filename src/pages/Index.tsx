@@ -34,7 +34,7 @@ const Index = () => {
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-8 lg:pr-12">
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-qubic-black leading-tight animate-fade-up">Entra al mundo crypto con seguridad y sin complicaciones en la red de QUBIC</h1>
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-qubic-black leading-tight animate-fade-up">Entra al mundo crypto sin comisiones ni complicaciones</h1>
               <p className="text-lg text-qubic-gray-dark animate-fade-up" style={{
               animationDelay: '0.1s'
             }}>
