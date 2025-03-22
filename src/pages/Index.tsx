@@ -140,7 +140,7 @@ const Index = () => {
                 <Shield size={24} className="text-qubic-blue" />
               </div>
               <h3 className="text-xl font-semibold text-qubic-black mb-2">Seguridad Financiera</h3>
-              <p className="text-qubic-gray-dark">Qubic selecciona para ti los productos financieros más seguros y rentables.</p>
+              <p className="text-qubic-gray-dark">En Qubic evaluamos y validamos cada proyecto financiero con altos estándares de calidad y seguridad. Invierte con tranquilidad y sin sorpresas.</p>
             </div>
             
             {/* Feature 2 */}
