@@ -1,40 +1,32 @@
-
 import React, { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Shield, BarChart3, MessageCircle, CreditCard, TrendingUp, Lock, DollarSign } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import SupportChat from '@/components/SupportChat';
-
 const Index = () => {
   const featureRefs = useRef<(HTMLDivElement | null)[]>([]);
-
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('animate-fade-up');
-            entry.target.classList.remove('opacity-0', 'translate-y-10');
-          }
-        });
-      },
-      { threshold: 0.1 }
-    );
-
-    featureRefs.current.forEach((ref) => {
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('animate-fade-up');
+          entry.target.classList.remove('opacity-0', 'translate-y-10');
+        }
+      });
+    }, {
+      threshold: 0.1
+    });
+    featureRefs.current.forEach(ref => {
       if (ref) observer.observe(ref);
     });
-
     return () => {
-      featureRefs.current.forEach((ref) => {
+      featureRefs.current.forEach(ref => {
         if (ref) observer.unobserve(ref);
       });
     };
   }, []);
-
-  return (
-    <div className="min-h-screen bg-white">
+  return <div className="min-h-screen bg-white">
       <Navbar />
       
       {/* Hero Section */}
@@ -42,13 +34,15 @@ const Index = () => {
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-8 lg:pr-12">
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-qubic-black leading-tight animate-fade-up">
-                Entra al mundo cripto sin comisiones en la red Qubic.
-              </h1>
-              <p className="text-lg text-qubic-gray-dark animate-fade-up" style={{ animationDelay: '0.1s' }}>
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-qubic-black leading-tight animate-fade-up">Entra al mundo crypto con seguridad y sin complicaciones en la red de QUBIC</h1>
+              <p className="text-lg text-qubic-gray-dark animate-fade-up" style={{
+              animationDelay: '0.1s'
+            }}>
                 La primera wallet que te permite gestionar tus criptoactivos sin preocuparte por comisiones de red, con acceso a la stablecoin USDQ y generación automática de informes fiscales.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 animate-fade-up" style={{ animationDelay: '0.2s' }}>
+              <div className="flex flex-col sm:flex-row gap-4 animate-fade-up" style={{
+              animationDelay: '0.2s'
+            }}>
                 <Link to="/login" className="btn-qubic text-center">
                   Crea tu cuenta gratis
                 </Link>
@@ -56,7 +50,9 @@ const Index = () => {
                   Descubre más
                 </a>
               </div>
-              <div className="flex items-center space-x-2 text-qubic-gray-dark animate-fade-up" style={{ animationDelay: '0.3s' }}>
+              <div className="flex items-center space-x-2 text-qubic-gray-dark animate-fade-up" style={{
+              animationDelay: '0.3s'
+            }}>
                 <Shield size={18} className="text-qubic-blue" />
                 <span className="text-sm">Seguridad de nivel bancario y protección de fondos</span>
               </div>
@@ -139,10 +135,7 @@ const Index = () => {
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {/* Feature 1 */}
-            <div 
-              ref={(el) => (featureRefs.current[0] = el)}
-              className="bg-white rounded-xl p-6 shadow-sm opacity-0 translate-y-10 transition-all duration-500"
-            >
+            <div ref={el => featureRefs.current[0] = el} className="bg-white rounded-xl p-6 shadow-sm opacity-0 translate-y-10 transition-all duration-500">
               <div className="w-12 h-12 bg-qubic-blue/10 rounded-lg flex items-center justify-center mb-4">
                 <Shield size={24} className="text-qubic-blue" />
               </div>
@@ -153,10 +146,7 @@ const Index = () => {
             </div>
             
             {/* Feature 2 */}
-            <div 
-              ref={(el) => (featureRefs.current[1] = el)}
-              className="bg-white rounded-xl p-6 shadow-sm opacity-0 translate-y-10 transition-all duration-500"
-            >
+            <div ref={el => featureRefs.current[1] = el} className="bg-white rounded-xl p-6 shadow-sm opacity-0 translate-y-10 transition-all duration-500">
               <div className="w-12 h-12 bg-qubic-blue/10 rounded-lg flex items-center justify-center mb-4">
                 <DollarSign size={24} className="text-qubic-blue" />
               </div>
@@ -167,10 +157,7 @@ const Index = () => {
             </div>
             
             {/* Feature 3 */}
-            <div 
-              ref={(el) => (featureRefs.current[2] = el)}
-              className="bg-white rounded-xl p-6 shadow-sm opacity-0 translate-y-10 transition-all duration-500"
-            >
+            <div ref={el => featureRefs.current[2] = el} className="bg-white rounded-xl p-6 shadow-sm opacity-0 translate-y-10 transition-all duration-500">
               <div className="w-12 h-12 bg-qubic-blue/10 rounded-lg flex items-center justify-center mb-4">
                 <BarChart3 size={24} className="text-qubic-blue" />
               </div>
@@ -181,10 +168,7 @@ const Index = () => {
             </div>
             
             {/* Feature 4 */}
-            <div 
-              ref={(el) => (featureRefs.current[3] = el)}
-              className="bg-white rounded-xl p-6 shadow-sm opacity-0 translate-y-10 transition-all duration-500"
-            >
+            <div ref={el => featureRefs.current[3] = el} className="bg-white rounded-xl p-6 shadow-sm opacity-0 translate-y-10 transition-all duration-500">
               <div className="w-12 h-12 bg-qubic-blue/10 rounded-lg flex items-center justify-center mb-4">
                 <MessageCircle size={24} className="text-qubic-blue" />
               </div>
@@ -201,10 +185,7 @@ const Index = () => {
       <section className="py-20 px-4 md:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div 
-              ref={(el) => (featureRefs.current[4] = el)}
-              className="opacity-0 translate-y-10 transition-all duration-500"
-            >
+            <div ref={el => featureRefs.current[4] = el} className="opacity-0 translate-y-10 transition-all duration-500">
               <div className="bg-qubic-blue/5 rounded-2xl p-8 relative overflow-hidden">
                 <div className="relative z-10">
                   <h2 className="text-3xl font-bold text-qubic-black mb-6">
@@ -254,10 +235,7 @@ const Index = () => {
               </div>
             </div>
             
-            <div 
-              ref={(el) => (featureRefs.current[5] = el)}
-              className="opacity-0 translate-y-10 transition-all duration-500"
-            >
+            <div ref={el => featureRefs.current[5] = el} className="opacity-0 translate-y-10 transition-all duration-500">
               <div className="space-y-6">
                 <h2 className="text-3xl font-bold text-qubic-black mb-2">
                   ¿Por qué elegir QUBIC WALLET?
@@ -348,8 +326,6 @@ const Index = () => {
       
       <Footer />
       <SupportChat />
-    </div>
-  );
+    </div>;
 };
-
 export default Index;
