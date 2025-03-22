@@ -34,7 +34,7 @@ const Index = () => {
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-8 lg:pr-12">
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-qubic-black leading-tight animate-fade-up">Entra al mundo crypto sin comisiones ni complicaciones</h1>
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-qubic-black leading-tight animate-fade-up">La seguridad cripto que necesitas, sin comisiones ni complicaciones.</h1>
               <p className="text-lg text-qubic-gray-dark animate-fade-up" style={{
               animationDelay: '0.1s'
             }}>
@@ -125,9 +125,7 @@ const Index = () => {
       <section id="features" className="py-20 bg-qubic-gray px-4 md:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-qubic-black mb-4">
-              Una experiencia cripto sin complicaciones
-            </h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-qubic-black mb-4">Una experiencia cripto para todos</h2>
             <p className="text-qubic-gray-dark max-w-2xl mx-auto">
               Diseñamos QUBIC WALLET para que puedas centrarte en lo importante: tus inversiones y activos digitales.
             </p>
@@ -159,10 +157,8 @@ const Index = () => {
               <div className="w-12 h-12 bg-qubic-blue/10 rounded-lg flex items-center justify-center mb-4">
                 <BarChart3 size={24} className="text-qubic-blue" />
               </div>
-              <h3 className="text-xl font-semibold text-qubic-black mb-2">Informes Fiscales</h3>
-              <p className="text-qubic-gray-dark">
-                Generación automática de informes para Hacienda, con todos los datos necesarios para tu declaración de impuestos.
-              </p>
+              <h3 className="text-xl font-semibold text-qubic-black mb-2">Informes Fiscales con IA</h3>
+              <p className="text-qubic-gray-dark">Generación automática de informes con Inteligencia Artificial para Hacienda, con todos los datos necesarios para tu declaración de impuestos.</p>
             </div>
             
             {/* Feature 4 */}
