@@ -16,6 +16,8 @@ const Wallet = () => {
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState('all');
   
   const {
     balance,
@@ -99,6 +101,10 @@ const Wallet = () => {
             {/* Transactions List Component */}
             <TransactionsList 
               transactions={transactions}
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              filterType={filterType}
+              setFilterType={setFilterType}
               isLoading={isLoading}
             />
           </div>

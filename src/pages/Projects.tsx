@@ -1,223 +1,510 @@
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Info, TrendingUp, ArrowRight, ExternalLink, AlertTriangle, Search, Tag, Filter } from 'lucide-react';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
+import SupportChat from '@/components/SupportChat';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 import { useWalletService } from '@/hooks/useWalletService';
 
-type Project = {
-  id: number;
-  title: string;
-  description: string;
-  image: string;
-  apy: number;
-  duration: string;
-  minInvestment: number;
-};
+// Project data
+const projects = [
+  {
+    id: 1,
+    name: 'Qubic Staking',
+    category: 'Staking',
+    roi: '7.5%',
+    description: 'Gana intereses pasivos al hacer staking de tus tokens QUBIC. Liquidez inmediata y recompensas diarias.',
+    riskLevel: 'Bajo',
+    minInvestment: 100,
+    duration: 'Flexible',
+    image: 'https://images.unsplash.com/photo-1620321023374-d1a68fbc720d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8Mnx8Ymx1ZSUyMGdyYWRpZW50fGVufDB8fDB8fA%3D%3D&auto=format&fit=crop&w=800&q=60'
+  },
+  {
+    id: 2,
+    name: 'USDQ Farming',
+    category: 'Yield Farming',
+    roi: '10.2%',
+    description: 'Proporciona liquidez al par USDQ-USDC y gana recompensas en tokens de gobernanza Qubic.',
+    riskLevel: 'Medio-Bajo',
+    minInvestment: 250,
+    duration: '30 días',
+    image: 'https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8NXx8Ymx1ZSUyMGdyYWRpZW50fGVufDB8fDB8fA%3D%3D&auto=format&fit=crop&w=800&q=60'
+  },
+  {
+    id: 3,
+    name: 'Qubic DeFi Index',
+    category: 'Index',
+    roi: '12.8%',
+    description: 'Exposición diversificada a los principales protocolos DeFi a través de un solo token índice.',
+    riskLevel: 'Medio',
+    minInvestment: 500,
+    duration: '90 días',
+    image: 'https://images.unsplash.com/photo-1557682250-33bd709cbe85?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MzN8fGJsdWUlMjBncmFkaWVudHxlbnwwfHwwfHw%3D&auto=format&fit=crop&w=800&q=60'
+  },
+  {
+    id: 4,
+    name: 'Lending Pool',
+    category: 'Lending',
+    roi: '9.5%',
+    description: 'Presta tus USDQ a otros usuarios y gana intereses competitivos con garantías de sobrepréstamo.',
+    riskLevel: 'Medio-Bajo',
+    minInvestment: 100,
+    duration: 'Flexible',
+    image: 'https://images.unsplash.com/photo-1579547945413-497e1b99dac0?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8Njd8fGJsdWUlMjBncmFkaWVudHxlbnwwfHwwfHw%3D&auto=format&fit=crop&w=800&q=60'
+  },
+  {
+    id: 5,
+    name: 'Qubic Launchpad',
+    category: 'Investment',
+    roi: '20%+',
+    description: 'Invierte en proyectos prometedores antes de su lanzamiento público con acceso prioritario.',
+    riskLevel: 'Alto',
+    minInvestment: 1000,
+    duration: '180 días',
+    image: 'https://images.unsplash.com/photo-1557682224-5b8590cd9ec5?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MjB8fGJsdWUlMjBncmFkaWVudHxlbnwwfHwwfHw%3D&auto=format&fit=crop&w=800&q=60'
+  },
+  {
+    id: 6,
+    name: 'Automatic Market Maker',
+    category: 'Liquidity',
+    roi: '14.3%',
+    description: 'Proporciona liquidez a pares de trading populares y recibe comisiones por cada swap realizado.',
+    riskLevel: 'Medio',
+    minInvestment: 500,
+    duration: '60 días',
+    image: 'https://images.unsplash.com/photo-1557683316-973673baf926?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MTZ8fGJsdWUlMjBncmFkaWVudHxlbnwwfHwwfHw%3D&auto=format&fit=crop&w=800&q=60'
+  }
+];
 
 const Projects = () => {
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [investAmount, setInvestAmount] = useState<string>('');
-  const [openDialog, setOpenDialog] = useState(false);
-  const { toast } = useToast();
-  const { balance, isLoading, fetchWalletData, handleInvestment } = useWalletService();
-
+  const [selectedProject, setSelectedProject] = useState<(typeof projects)[0] | null>(null);
+  const [isProjectDetailsOpen, setIsProjectDetailsOpen] = useState(false);
+  const [isInvestDialogOpen, setIsInvestDialogOpen] = useState(false);
+  const [investAmount, setInvestAmount] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedRiskLevel, setSelectedRiskLevel] = useState('all');
+  
+  // Obtener el servicio de wallet
+  const {
+    balance,
+    isLoading,
+    isProcessing,
+    fetchWalletData,
+    handleInvestment
+  } = useWalletService();
+  
+  // Cargar el balance de la wallet al montar el componente
   useEffect(() => {
     fetchWalletData();
-  }, [fetchWalletData]);
+  }, []);
 
-  const projects: Project[] = [
-    {
-      id: 1,
-      title: "Energía Renovable Solar",
-      description: "Inversión en paneles solares para comunidades rurales con retorno garantizado del 12% anual.",
-      image: "https://images.unsplash.com/photo-1508514177221-188b1cf16e9d?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=2070&q=80",
-      apy: 12,
-      duration: "24 meses",
-      minInvestment: 100
-    },
-    {
-      id: 2,
-      title: "Agricultura Sostenible",
-      description: "Financiamiento para pequeños agricultores que implementan prácticas regenerativas con retorno del 9% anual.",
-      image: "https://images.unsplash.com/photo-1625246333195-78d9c38ad449?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=2070&q=80",
-      apy: 9,
-      duration: "18 meses",
-      minInvestment: 50
-    },
-    {
-      id: 3,
-      title: "Microcréditos Empresariales",
-      description: "Apoyo a pequeñas empresas locales con necesidades de capital para crecimiento con retorno del 10% anual.",
-      image: "https://images.unsplash.com/photo-1556911220-bff31c812dba?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=2070&q=80",
-      apy: 10,
-      duration: "12 meses",
-      minInvestment: 200
-    },
-    {
-      id: 4,
-      title: "Vivienda Accesible",
-      description: "Financiamiento para construcción de viviendas sostenibles para familias de bajos ingresos con retorno del 8.5% anual.",
-      image: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=2070&q=80",
-      apy: 8.5,
-      duration: "36 meses",
-      minInvestment: 150
-    }
-  ];
+  // Filter projects based on search term, category, and risk level
+  const filteredProjects = projects.filter(project => {
+    const matchesSearch = searchTerm === '' || 
+      project.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      project.description.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesCategory = selectedCategory === 'all' || project.category === selectedCategory;
+    const matchesRiskLevel = selectedRiskLevel === 'all' || project.riskLevel === selectedRiskLevel;
+    
+    return matchesSearch && matchesCategory && matchesRiskLevel;
+  });
 
-  const handleOpenInvestDialog = (project: Project) => {
+  const showProjectDetails = (project: typeof projects[0]) => {
     setSelectedProject(project);
-    setInvestAmount(project.minInvestment.toString());
-    setOpenDialog(true);
+    setIsProjectDetailsOpen(true);
   };
 
-  const handleInvest = async () => {
+  const startInvesting = () => {
+    if (selectedProject) {
+      setIsProjectDetailsOpen(false);
+      setIsInvestDialogOpen(true);
+      setInvestAmount(selectedProject.minInvestment.toString());
+    }
+  };
+
+  const handleInvest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
     if (!selectedProject) return;
     
     const amount = parseFloat(investAmount);
+    if (isNaN(amount) || amount <= 0) return;
     
-    if (isNaN(amount) || amount < selectedProject.minInvestment) {
-      toast({
-        title: "Monto inválido",
-        description: `El monto mínimo de inversión es ${selectedProject.minInvestment} USDQ`,
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (amount > balance) {
-      toast({
-        title: "Fondos insuficientes",
-        description: "No tienes suficiente saldo para realizar esta inversión",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    const success = await handleInvestment(amount, selectedProject.title);
+    // Usar el servicio de wallet para procesar la inversión
+    const success = await handleInvestment(amount, selectedProject.name);
     
     if (success) {
-      setOpenDialog(false);
-      setSelectedProject(null);
+      setIsInvestDialogOpen(false);
       setInvestAmount('');
-      
-      toast({
-        title: "¡Inversión realizada!",
-        description: `Has invertido ${amount} USDQ en ${selectedProject.title}`,
-      });
     }
   };
 
+  // Get unique categories and risk levels for filters
+  const categories = ['all', ...Array.from(new Set(projects.map(p => p.category)))];
+  const riskLevels = ['all', ...Array.from(new Set(projects.map(p => p.riskLevel)))];
+
   return (
-    <div className="container mx-auto py-8">
-      <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold text-gray-900 mb-3">Proyectos de Impacto</h1>
-        <p className="text-gray-600 max-w-2xl mx-auto">
-          Invierte en proyectos que generan un impacto positivo mientras obtienes retornos financieros. 
-          Cada proyecto ha sido cuidadosamente evaluado.
-        </p>
-        <div className="mt-4 text-qubic-blue font-semibold">
-          Disponible: {isLoading ? "Cargando..." : `${balance.toFixed(2)} USDQ`}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {projects.map((project) => (
-          <Card key={project.id} className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
-            <div className="h-48 overflow-hidden">
-              <img 
-                src={project.image} 
-                alt={project.title} 
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <CardHeader>
-              <CardTitle>{project.title}</CardTitle>
-              <CardDescription className="flex justify-between text-sm mt-1">
-                <span>{project.apy}% APY</span>
-                <span>{project.duration}</span>
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 text-sm">{project.description}</p>
-              <div className="mt-4 text-sm text-gray-500">
-                Inversión mínima: {project.minInvestment} USDQ
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button 
-                className="w-full" 
-                onClick={() => handleOpenInvestDialog(project)}
-              >
-                Invertir ahora
-              </Button>
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
-
-      <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Invertir en {selectedProject?.title}</DialogTitle>
-            <DialogDescription>
-              Inversión mínima: {selectedProject?.minInvestment} USDQ
-              <br />
-              Retorno anual: {selectedProject?.apy}%
-              <br />
-              Duración: {selectedProject?.duration}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="amount">Monto a invertir (USDQ)</Label>
-              <Input
-                id="amount"
-                type="number"
-                value={investAmount}
-                onChange={(e) => setInvestAmount(e.target.value)}
-                placeholder="Ingresa el monto"
-                min={selectedProject?.minInvestment}
-                step="1"
-              />
-              <p className="text-sm text-gray-500">
-                Saldo disponible: {balance.toFixed(2)} USDQ
-              </p>
-            </div>
-            
-            {parseFloat(investAmount) > 0 && (
-              <div className="space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span>Monto a invertir:</span>
-                  <span>{parseFloat(investAmount).toFixed(2)} USDQ</span>
-                </div>
-                <div className="flex justify-between text-sm font-medium">
-                  <span>Retorno estimado ({selectedProject?.duration}):</span>
-                  <span>
-                    {selectedProject ? (parseFloat(investAmount) * (selectedProject.apy / 100) * 
-                      (parseInt(selectedProject.duration) / 12)).toFixed(2) : '0'} USDQ
-                  </span>
-                </div>
-              </div>
-            )}
+    <div className="min-h-screen bg-qubic-gray flex flex-col">
+      <Navbar />
+      
+      <main className="flex-1 pt-24 pb-12 px-4 md:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-qubic-black mb-2">Proyectos DeFi</h1>
+            <p className="text-qubic-gray-dark max-w-3xl">
+              Explora y participa en proyectos DeFi seleccionados con los mejores rendimientos y niveles de riesgo variados.
+              Todos operan en la red Qubic sin comisiones.
+            </p>
           </div>
           
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpenDialog(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleInvest}>
-              Confirmar inversión
-            </Button>
-          </DialogFooter>
+          {/* Filters */}
+          <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="w-full md:w-1/3">
+                <div className="relative">
+                  <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-qubic-gray-dark" />
+                  <Input 
+                    type="text"
+                    placeholder="Buscar proyectos..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 w-full"
+                  />
+                </div>
+              </div>
+              
+              <div className="w-full md:w-1/3">
+                <div className="relative">
+                  <Tag size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-qubic-gray-dark" />
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="pl-10 pr-4 py-2 border border-gray-200 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-qubic-blue/20 focus:border-qubic-blue"
+                  >
+                    <option value="all">Todas las categorías</option>
+                    {categories.filter(c => c !== 'all').map(category => (
+                      <option key={category} value={category}>{category}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              
+              <div className="w-full md:w-1/3">
+                <div className="relative">
+                  <Filter size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-qubic-gray-dark" />
+                  <select
+                    value={selectedRiskLevel}
+                    onChange={(e) => setSelectedRiskLevel(e.target.value)}
+                    className="pl-10 pr-4 py-2 border border-gray-200 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-qubic-blue/20 focus:border-qubic-blue"
+                  >
+                    <option value="all">Todos los niveles de riesgo</option>
+                    {riskLevels.filter(r => r !== 'all').map(riskLevel => (
+                      <option key={riskLevel} value={riskLevel}>{riskLevel}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Projects Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredProjects.map(project => (
+              <div 
+                key={project.id} 
+                className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-md hover:-translate-y-1"
+              >
+                <div 
+                  className="h-40 bg-cover bg-center"
+                  style={{ backgroundImage: `url(${project.image})` }}
+                ></div>
+                
+                <div className="p-6">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h3 className="text-xl font-bold text-qubic-black">{project.name}</h3>
+                      <span className="inline-block bg-qubic-blue/10 text-qubic-blue text-xs rounded-full px-2 py-1">
+                        {project.category}
+                      </span>
+                    </div>
+                    <div className="flex items-center bg-green-50 rounded-lg px-3 py-1">
+                      <TrendingUp size={16} className="text-green-600 mr-1" />
+                      <span className="text-green-600 font-medium">{project.roi}</span>
+                    </div>
+                  </div>
+                  
+                  <p className="text-qubic-gray-dark text-sm mb-4 line-clamp-2">
+                    {project.description}
+                  </p>
+                  
+                  <div className="flex justify-between text-sm text-qubic-gray-dark mb-5">
+                    <div>
+                      <p className="font-medium text-qubic-black">Riesgo:</p>
+                      <p>{project.riskLevel}</p>
+                    </div>
+                    <div>
+                      <p className="font-medium text-qubic-black">Mín. inversión:</p>
+                      <p>{project.minInvestment} USDQ</p>
+                    </div>
+                    <div>
+                      <p className="font-medium text-qubic-black">Duración:</p>
+                      <p>{project.duration}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    <Button 
+                      onClick={() => showProjectDetails(project)}
+                      variant="outline"
+                      className="flex-1 text-qubic-blue border-qubic-blue hover:bg-qubic-blue/5"
+                    >
+                      Saber más
+                    </Button>
+                    <Button 
+                      onClick={() => {
+                        setSelectedProject(project);
+                        setIsInvestDialogOpen(true);
+                        setInvestAmount(project.minInvestment.toString());
+                      }}
+                      className="flex-1 bg-qubic-blue hover:bg-qubic-blue-dark"
+                    >
+                      Invertir ahora
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          {filteredProjects.length === 0 && (
+            <div className="bg-white rounded-xl shadow-sm p-12 text-center">
+              <SearchIcon size={48} className="mx-auto text-qubic-gray-dark mb-4 opacity-50" />
+              <h3 className="text-xl font-medium text-qubic-black mb-2">No se encontraron proyectos</h3>
+              <p className="text-qubic-gray-dark max-w-md mx-auto">
+                No hay proyectos que coincidan con tus criterios de búsqueda. Intenta cambiar los filtros o buscar con otros términos.
+              </p>
+            </div>
+          )}
+        </div>
+      </main>
+      
+      {/* Project Details Dialog */}
+      <Dialog open={isProjectDetailsOpen} onOpenChange={setIsProjectDetailsOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          {selectedProject && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{selectedProject.name}</DialogTitle>
+                <DialogDescription>
+                  Detalles completos del proyecto y términos de inversión.
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="mt-4 space-y-6">
+                <div 
+                  className="h-56 rounded-lg bg-cover bg-center"
+                  style={{ backgroundImage: `url(${selectedProject.image})` }}
+                ></div>
+                
+                <div className="grid grid-cols-3 gap-4 bg-qubic-gray rounded-lg p-4">
+                  <div>
+                    <p className="text-sm text-qubic-gray-dark">ROI Estimado</p>
+                    <p className="text-lg font-bold text-green-600">{selectedProject.roi}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-qubic-gray-dark">Inversión mínima</p>
+                    <p className="text-lg font-bold text-qubic-black">{selectedProject.minInvestment} USDQ</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-qubic-gray-dark">Duración</p>
+                    <p className="text-lg font-bold text-qubic-black">{selectedProject.duration}</p>
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="text-lg font-bold text-qubic-black mb-2">Descripción</h3>
+                  <p className="text-qubic-gray-dark">{selectedProject.description}</p>
+                </div>
+                
+                <div>
+                  <h3 className="text-lg font-bold text-qubic-black mb-2">Nivel de riesgo</h3>
+                  <div className="flex items-center">
+                    <span 
+                      className={cn(
+                        "inline-block rounded-full w-3 h-3 mr-2",
+                        selectedProject.riskLevel === 'Bajo' && "bg-green-500",
+                        selectedProject.riskLevel === 'Medio-Bajo' && "bg-blue-500",
+                        selectedProject.riskLevel === 'Medio' && "bg-yellow-500",
+                        selectedProject.riskLevel === 'Alto' && "bg-red-500"
+                      )}
+                    ></span>
+                    <span className="font-medium">{selectedProject.riskLevel}</span>
+                  </div>
+                  <p className="text-qubic-gray-dark mt-2">
+                    {selectedProject.riskLevel === 'Bajo' && 'Proyecto con bajo riesgo y rendimiento estable, adecuado para perfiles conservadores.'}
+                    {selectedProject.riskLevel === 'Medio-Bajo' && 'Riesgo controlado con buena relación riesgo-beneficio.'}
+                    {selectedProject.riskLevel === 'Medio' && 'Equilibrio entre riesgo y potencial de rendimiento, para inversores moderados.'}
+                    {selectedProject.riskLevel === 'Alto' && 'Mayor potencial de rendimiento pero con riesgos elevados. Recomendado solo como parte de una cartera diversificada.'}
+                  </p>
+                </div>
+                
+                <div className="bg-yellow-50 p-4 rounded-lg flex">
+                  <AlertTriangle size={20} className="text-yellow-600 mr-3 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-yellow-800">
+                      <strong>Aviso de riesgo:</strong> Todas las inversiones en DeFi implican cierto nivel de riesgo. 
+                      Los rendimientos pasados no garantizan resultados futuros. Invierte de forma responsable y solo 
+                      capital que puedas permitirte perder.
+                    </p>
+                  </div>
+                </div>
+                
+                <a 
+                  href="#" 
+                  className="text-qubic-blue hover:underline flex items-center text-sm font-medium"
+                >
+                  <ExternalLink size={16} className="mr-1" />
+                  Ver documentación técnica completa
+                </a>
+              </div>
+              
+              <DialogFooter className="mt-6">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsProjectDetailsOpen(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  onClick={startInvesting}
+                  className="bg-qubic-blue hover:bg-qubic-blue-dark"
+                >
+                  Invertir ahora
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
+      
+      {/* Invest Dialog */}
+      <Dialog open={isInvestDialogOpen} onOpenChange={setIsInvestDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          {selectedProject && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Invertir en {selectedProject.name}</DialogTitle>
+                <DialogDescription>
+                  Introduce el monto que deseas invertir en este proyecto.
+                </DialogDescription>
+              </DialogHeader>
+              
+              <form onSubmit={handleInvest} className="mt-4">
+                <div className="space-y-4">
+                  <div className="bg-qubic-gray p-4 rounded-lg">
+                    <div className="flex justify-between">
+                      <span className="text-qubic-gray-dark">Proyecto:</span>
+                      <span className="font-medium text-qubic-black">{selectedProject.name}</span>
+                    </div>
+                    <div className="flex justify-between mt-1">
+                      <span className="text-qubic-gray-dark">ROI Estimado:</span>
+                      <span className="font-medium text-green-600">{selectedProject.roi}</span>
+                    </div>
+                    <div className="flex justify-between mt-1">
+                      <span className="text-qubic-gray-dark">Duración:</span>
+                      <span className="font-medium text-qubic-black">{selectedProject.duration}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="invest-amount">Monto a invertir (USDQ)</Label>
+                    <Input
+                      id="invest-amount"
+                      type="number"
+                      min={selectedProject.minInvestment}
+                      step="1"
+                      placeholder="0.00"
+                      value={investAmount}
+                      onChange={(e) => setInvestAmount(e.target.value)}
+                      required
+                    />
+                    <div className="flex justify-between text-xs">
+                      <span className="text-qubic-gray-dark">Mínimo: {selectedProject.minInvestment} USDQ</span>
+                      <span className="text-qubic-gray-dark">Disponible: {balance.toFixed(2)} USDQ</span>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-qubic-blue/5 p-4 rounded-lg">
+                    <div className="flex items-start">
+                      <Info size={18} className="text-qubic-blue mr-3 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm text-qubic-black font-medium">Resumen de la inversión</p>
+                        <p className="text-sm text-qubic-gray-dark mt-1">
+                          Inversión: <span className="font-medium text-qubic-black">{investAmount || 0} USDQ</span>
+                        </p>
+                        <p className="text-sm text-qubic-gray-dark">
+                          Retorno estimado: <span className="font-medium text-green-600">
+                            {investAmount ? (Number(investAmount) * (Number(selectedProject.roi.replace('%', '')) / 100)).toFixed(2) : '0.00'} USDQ
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-yellow-50 p-4 rounded-lg">
+                    <p className="text-sm text-yellow-800">
+                      <strong>Importante:</strong> Al confirmar esta inversión, aceptas los términos y condiciones 
+                      del proyecto. Consulta la documentación completa para conocer detalles sobre liquidez y periodo de bloqueo.
+                    </p>
+                  </div>
+                </div>
+                
+                <DialogFooter className="mt-6">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setIsInvestDialogOpen(false)}
+                    disabled={isProcessing}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    className="bg-qubic-blue hover:bg-qubic-blue-dark"
+                    disabled={isProcessing}
+                  >
+                    {isProcessing ? (
+                      <>
+                        <span className="mr-2">Procesando</span>
+                        <span className="animate-spin">
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                        </span>
+                      </>
+                    ) : 'Confirmar inversión'}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+      
+      <Footer />
+      <SupportChat />
     </div>
   );
 };
+
+const SearchIcon = Search;
 
 export default Projects;
