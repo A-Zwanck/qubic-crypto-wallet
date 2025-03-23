@@ -1,17 +1,19 @@
-import { useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 
-type Transaction = {
-  id: string;
-  user_id: string;
-  wallet_id: string;
-  type: 'deposit' | 'withdraw' | 'investment';
-  amount: number;
-  status: string;
-  created_at: string;
-  details?: string;
-};
+import { useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
+import { Transaction } from '@/types/wallet';
+import { 
+  fetchUserWallet, 
+  createUserWallet, 
+  updateWalletBalance, 
+  getCurrentUserId 
+} from '@/services/walletService';
+import { 
+  fetchUserTransactions, 
+  createDepositTransaction, 
+  createWithdrawTransaction, 
+  createInvestmentTransaction 
+} from '@/services/transactionService';
 
 export const useWalletService = () => {
   const [balance, setBalance] = useState(0);
@@ -28,11 +30,7 @@ export const useWalletService = () => {
       setIsLoading(true);
       
       // Get the current user's wallet
-      const { data: walletData, error: walletError } = await supabase
-        .from('wallets')
-        .select('*')
-        .limit(1)
-        .maybeSingle();
+      const { data: walletData, error: walletError } = await fetchUserWallet();
       
       if (walletError) {
         console.error('Error al cargar el wallet:', walletError);
@@ -50,10 +48,7 @@ export const useWalletService = () => {
         setBalance(typeof walletData.balance === 'string' ? parseFloat(walletData.balance) : walletData.balance);
         
         // Load user transactions
-        const { data: transactionsData, error: transactionsError } = await supabase
-          .from('transactions')
-          .select('*')
-          .order('created_at', { ascending: false });
+        const { data: transactionsData, error: transactionsError } = await fetchUserTransactions(walletData.id);
         
         if (transactionsError) {
           console.error('Error al cargar las transacciones:', transactionsError);
@@ -63,13 +58,7 @@ export const useWalletService = () => {
             variant: 'destructive',
           });
         } else if (transactionsData) {
-          // Ensure type safety by mapping transaction data
-          const typedTransactions = transactionsData.map(transaction => ({
-            ...transaction,
-            type: transaction.type as 'deposit' | 'withdraw' | 'investment',
-            amount: typeof transaction.amount === 'string' ? parseFloat(transaction.amount) : transaction.amount
-          }));
-          setTransactions(typedTransactions);
+          setTransactions(transactionsData);
         }
       } else {
         // If there's no wallet, the user might have just registered and the trigger hasn't executed yet
@@ -80,15 +69,10 @@ export const useWalletService = () => {
         });
         
         // Try to create a wallet for the user
-        const { data: sessionData } = await supabase.auth.getSession();
-        const userId = sessionData.session?.user.id;
+        const userId = await getCurrentUserId();
         
         if (userId) {
-          const { data: newWallet, error: createError } = await supabase
-            .from('wallets')
-            .insert({ user_id: userId })
-            .select()
-            .single();
+          const { data: newWallet, error: createError } = await createUserWallet(userId);
           
           if (createError) {
             console.error('Error al crear wallet:', createError);
@@ -133,9 +117,8 @@ export const useWalletService = () => {
     try {
       setIsProcessing(true);
       
-      // 1. Get session for user_id
-      const { data: sessionData } = await supabase.auth.getSession();
-      const userId = sessionData.session?.user.id;
+      // 1. Get user ID
+      const userId = await getCurrentUserId();
       
       if (!userId) {
         toast({
@@ -147,32 +130,24 @@ export const useWalletService = () => {
       }
       
       // 2. Create the transaction
-      const { error: transactionError } = await supabase
-        .from('transactions')
-        .insert({
-          user_id: userId,
-          wallet_id: walletId,
-          type: 'deposit',
-          amount: amount,
-          status: 'completed'
-        });
+      const { success: transactionSuccess, error: transactionError } = 
+        await createDepositTransaction(userId, walletId, amount);
       
-      if (transactionError) {
+      if (!transactionSuccess) {
         throw transactionError;
       }
       
       // 3. Update the wallet balance
-      const { error: walletError } = await supabase
-        .from('wallets')
-        .update({ balance: balance + amount })
-        .eq('id', walletId);
+      const newBalance = balance + amount;
+      const { success: walletSuccess, error: walletError } = 
+        await updateWalletBalance(walletId, newBalance);
       
-      if (walletError) {
+      if (!walletSuccess) {
         throw walletError;
       }
       
       // 4. Update local state
-      setBalance(balance + amount);
+      setBalance(newBalance);
       
       toast({
         title: 'Depósito realizado',
@@ -225,9 +200,8 @@ export const useWalletService = () => {
     try {
       setIsProcessing(true);
       
-      // 1. Get session for user_id
-      const { data: sessionData } = await supabase.auth.getSession();
-      const userId = sessionData.session?.user.id;
+      // 1. Get user ID
+      const userId = await getCurrentUserId();
       
       if (!userId) {
         toast({
@@ -239,32 +213,24 @@ export const useWalletService = () => {
       }
       
       // 2. Create the transaction
-      const { error: transactionError } = await supabase
-        .from('transactions')
-        .insert({
-          user_id: userId,
-          wallet_id: walletId,
-          type: 'withdraw',
-          amount: amount,
-          status: 'completed'
-        });
+      const { success: transactionSuccess, error: transactionError } = 
+        await createWithdrawTransaction(userId, walletId, amount);
       
-      if (transactionError) {
+      if (!transactionSuccess) {
         throw transactionError;
       }
       
       // 3. Update the wallet balance
-      const { error: walletError } = await supabase
-        .from('wallets')
-        .update({ balance: balance - amount })
-        .eq('id', walletId);
+      const newBalance = balance - amount;
+      const { success: walletSuccess, error: walletError } = 
+        await updateWalletBalance(walletId, newBalance);
       
-      if (walletError) {
+      if (!walletSuccess) {
         throw walletError;
       }
       
       // 4. Update local state
-      setBalance(balance - amount);
+      setBalance(newBalance);
       
       toast({
         title: 'Retiro realizado',
@@ -317,9 +283,8 @@ export const useWalletService = () => {
     try {
       setIsProcessing(true);
       
-      // 1. Get session for user_id
-      const { data: sessionData } = await supabase.auth.getSession();
-      const userId = sessionData.session?.user.id;
+      // 1. Get user ID
+      const userId = await getCurrentUserId();
       
       if (!userId) {
         toast({
@@ -330,42 +295,32 @@ export const useWalletService = () => {
         return false;
       }
       
-      // 2. Create the transaction - Using "withdraw" type instead of "investment"
-      // because the database constraint only allows certain transaction types
-      const { error: transactionError } = await supabase
-        .from('transactions')
-        .insert({
-          user_id: userId,
-          wallet_id: walletId,
-          type: 'withdraw', // Changed from 'investment' to 'withdraw' to pass the constraint
-          amount: amount,
-          status: 'completed',
-          details: `Inversión: ${projectName}` // We still track that it's an investment in the details
-        });
+      // 2. Create the investment transaction
+      const { success: transactionSuccess, error: transactionError } = 
+        await createInvestmentTransaction(userId, walletId, amount, projectName);
       
-      if (transactionError) {
+      if (!transactionSuccess) {
         throw transactionError;
       }
       
       // 3. Update the wallet balance
-      const { error: walletError } = await supabase
-        .from('wallets')
-        .update({ balance: balance - amount })
-        .eq('id', walletId);
+      const newBalance = balance - amount;
+      const { success: walletSuccess, error: walletError } = 
+        await updateWalletBalance(walletId, newBalance);
       
-      if (walletError) {
+      if (!walletSuccess) {
         throw walletError;
       }
       
       // 4. Update local state
-      setBalance(balance - amount);
+      setBalance(newBalance);
       
       toast({
         title: 'Inversión realizada',
         description: `Has invertido ${amount.toFixed(2)} USDQ en ${projectName} correctamente`,
       });
       
-      // Actualizar la lista de transacciones
+      // Refresh transactions list
       fetchWalletData();
       
       return true;
