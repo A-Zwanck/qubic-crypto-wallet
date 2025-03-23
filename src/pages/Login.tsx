@@ -1,22 +1,34 @@
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Link } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 
 const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   
   const navigate = useNavigate();
+  const location = useLocation();
+  const { toast } = useToast();
+  
+  // Check if user is already authenticated
+  useEffect(() => {
+    const user = localStorage.getItem('authenticatedUser');
+    if (user) {
+      const redirectPath = location.state?.from || '/wallet';
+      navigate(redirectPath);
+    }
+  }, [navigate, location]);
 
   const toggleView = () => {
     setIsLogin(!isLogin);
@@ -50,20 +62,118 @@ const Login = () => {
       return;
     }
     
+    // Additional validation for registration
+    if (!isLogin && !name.trim()) {
+      setError('Por favor, introduce tu nombre');
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
-      // Simulate API request
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      if (isLogin) {
+        // Login logic
+        await loginUser(email, password);
+      } else {
+        // Registration logic
+        await registerUser(email, password, name);
+      }
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Ha ocurrido un error. Por favor, inténtalo de nuevo');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loginUser = async (email: string, password: string) => {
+    try {
+      // For demo purposes, get users from localStorage
+      const usersJSON = localStorage.getItem('users');
+      const users = usersJSON ? JSON.parse(usersJSON) : [];
       
-      // In a real app, you would authenticate with your backend here
+      // Find user with matching email
+      const user = users.find((u: any) => u.email === email);
+      
+      if (!user) {
+        throw new Error('Usuario no encontrado');
+      }
+      
+      // Check password (in a real app, you would use proper password hashing)
+      if (user.password !== password) {
+        throw new Error('Contraseña incorrecta');
+      }
+      
+      // Set authenticated user in localStorage
+      const authenticatedUser = {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+      };
+      
+      localStorage.setItem('authenticatedUser', JSON.stringify(authenticatedUser));
+      
+      // Show success toast
+      toast({
+        title: '¡Bienvenido de nuevo!',
+        description: `Has iniciado sesión como ${user.name}`,
+      });
+      
+      // Redirect to wallet page on success
+      const redirectPath = location.state?.from || '/wallet';
+      navigate(redirectPath);
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const registerUser = async (email: string, password: string, name: string) => {
+    try {
+      // For demo purposes, get and update users in localStorage
+      const usersJSON = localStorage.getItem('users');
+      const users = usersJSON ? JSON.parse(usersJSON) : [];
+      
+      // Check if user with this email already exists
+      const existingUser = users.find((u: any) => u.email === email);
+      if (existingUser) {
+        throw new Error('Este email ya está registrado');
+      }
+      
+      // Create new user
+      const newUser = {
+        id: Date.now().toString(),
+        email,
+        password, // In a real app, you would hash this password
+        name,
+        createdAt: new Date().toISOString(),
+      };
+      
+      // Add to users array and save to localStorage
+      users.push(newUser);
+      localStorage.setItem('users', JSON.stringify(users));
+      
+      // Set authenticated user in localStorage
+      const authenticatedUser = {
+        id: newUser.id,
+        email: newUser.email,
+        name: newUser.name,
+      };
+      
+      localStorage.setItem('authenticatedUser', JSON.stringify(authenticatedUser));
+      
+      // Show success toast
+      toast({
+        title: '¡Cuenta creada con éxito!',
+        description: 'Bienvenido a QUBIC WALLET',
+      });
       
       // Redirect to wallet page on success
       navigate('/wallet');
-    } catch (err) {
-      setError('Ha ocurrido un error. Por favor, inténtalo de nuevo');
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+      throw error;
     }
   };
 
@@ -88,6 +198,21 @@ const Login = () => {
             {error && (
               <div className="bg-red-50 text-red-700 px-4 py-3 rounded-lg text-sm">
                 {error}
+              </div>
+            )}
+            
+            {!isLogin && (
+              <div className="space-y-2">
+                <Label htmlFor="name">Nombre</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Tu nombre completo"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required={!isLogin}
+                  className="h-12"
+                />
               </div>
             )}
             

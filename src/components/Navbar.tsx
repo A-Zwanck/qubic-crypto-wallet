@@ -1,15 +1,47 @@
+
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, LogOut, ChevronDown } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Menu, X, LogOut, ChevronDown, User } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useToast } from '@/hooks/use-toast';
+
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [user, setUser] = useState<any>(null);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
-  // Check if user is authenticated - this is a placeholder
-  const isAuthenticated = location.pathname !== '/' && location.pathname !== '/login';
+  // Check if user is authenticated
+  useEffect(() => {
+    const checkAuth = () => {
+      const userJson = localStorage.getItem('authenticatedUser');
+      if (userJson) {
+        try {
+          const userData = JSON.parse(userJson);
+          setUser(userData);
+        } catch (e) {
+          // Handle invalid JSON
+          localStorage.removeItem('authenticatedUser');
+          setUser(null);
+        }
+      } else {
+        setUser(null);
+      }
+    };
+    
+    checkAuth();
+    
+    // Add event listener for auth changes
+    window.addEventListener('storage', checkAuth);
+    
+    return () => {
+      window.removeEventListener('storage', checkAuth);
+    };
+  }, [location.pathname]);
+
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
@@ -17,10 +49,35 @@ const Navbar = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+  
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
-  return <header className={cn("fixed top-0 w-full z-50 transition-all duration-300 py-4 px-4 md:px-8", isScrolled ? "bg-white/90 backdrop-blur-md shadow-sm" : "bg-transparent")}>
+  
+  const handleLogout = () => {
+    // Remove user from localStorage
+    localStorage.removeItem('authenticatedUser');
+    
+    // Update state
+    setUser(null);
+    
+    // Close mobile menu if open
+    setIsMobileMenuOpen(false);
+    
+    // Show logout toast
+    toast({
+      title: 'Sesión cerrada',
+      description: 'Has cerrado sesión correctamente',
+    });
+    
+    // Redirect to home page
+    navigate('/');
+  };
+  
+  const isAuthenticated = !!user;
+  
+  return (
+    <header className={cn("fixed top-0 w-full z-50 transition-all duration-300 py-4 px-4 md:px-8", isScrolled ? "bg-white/90 backdrop-blur-md shadow-sm" : "bg-transparent")}>
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center">
@@ -30,7 +87,8 @@ const Navbar = () => {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-6">
-          {isAuthenticated ? <>
+          {isAuthenticated ? (
+            <>
               <Link to="/wallet" className={cn("text-qubic-black/80 hover:text-qubic-blue transition-colors", location.pathname === '/wallet' && "text-qubic-blue font-medium")}>
                 Wallet
               </Link>
@@ -42,25 +100,28 @@ const Navbar = () => {
               </Link>
               <div className="relative group">
                 <button className="flex items-center space-x-1 text-qubic-black/80 hover:text-qubic-blue transition-colors">
-                  <span>Mi Cuenta</span>
+                  <span>{user?.name || 'Mi Cuenta'}</span>
                   <ChevronDown size={16} />
                 </button>
                 <div className="absolute right-0 w-48 mt-2 origin-top-right bg-white rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
                   <div className="py-1">
-                    <button onClick={() => {
-                  // Add logout functionality here
-                  window.location.href = '/';
-                }} className="flex items-center w-full px-4 py-2 text-sm text-left text-qubic-black/80 hover:text-qubic-blue hover:bg-gray-50">
+                    <button 
+                      onClick={handleLogout} 
+                      className="flex items-center w-full px-4 py-2 text-sm text-left text-qubic-black/80 hover:text-qubic-blue hover:bg-gray-50"
+                    >
                       <LogOut size={16} className="mr-2" />
                       <span>Cerrar sesión</span>
                     </button>
                   </div>
                 </div>
               </div>
-            </> : <>
+            </>
+          ) : (
+            <>
               <Link to="/login" className="btn-qubic-outline">Iniciar sesión</Link>
               <Link to="/login" className="btn-qubic">Crear cuenta</Link>
-            </>}
+            </>
+          )}
         </nav>
 
         {/* Mobile Menu Button */}
@@ -72,34 +133,73 @@ const Navbar = () => {
       {/* Mobile Menu */}
       <div className={cn("fixed inset-0 bg-white z-40 flex flex-col pt-20 pb-6 px-4 transition-transform duration-300 ease-in-out md:hidden", isMobileMenuOpen ? "translate-x-0" : "translate-x-full")}>
         <nav className="flex flex-col space-y-4">
-          {isAuthenticated ? <>
-              <Link to="/wallet" className={cn("text-lg py-2 border-b border-gray-100 text-qubic-black/80", location.pathname === '/wallet' && "text-qubic-blue font-medium")} onClick={() => setIsMobileMenuOpen(false)}>
+          {isAuthenticated ? (
+            <>
+              {user && (
+                <div className="py-4 border-b border-gray-100 mb-2">
+                  <div className="flex items-center">
+                    <div className="bg-qubic-blue/10 rounded-full p-2 mr-3">
+                      <User size={24} className="text-qubic-blue" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-qubic-black">{user.name}</div>
+                      <div className="text-sm text-qubic-gray-dark">{user.email}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              <Link 
+                to="/wallet" 
+                className={cn("text-lg py-2 border-b border-gray-100 text-qubic-black/80", location.pathname === '/wallet' && "text-qubic-blue font-medium")} 
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
                 Wallet
               </Link>
-              <Link to="/projects" className={cn("text-lg py-2 border-b border-gray-100 text-qubic-black/80", location.pathname === '/projects' && "text-qubic-blue font-medium")} onClick={() => setIsMobileMenuOpen(false)}>
+              <Link 
+                to="/projects" 
+                className={cn("text-lg py-2 border-b border-gray-100 text-qubic-black/80", location.pathname === '/projects' && "text-qubic-blue font-medium")} 
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
                 Proyectos DeFi
               </Link>
-              <Link to="/dashboard" className={cn("text-lg py-2 border-b border-gray-100 text-qubic-black/80", location.pathname === '/dashboard' && "text-qubic-blue font-medium")} onClick={() => setIsMobileMenuOpen(false)}>
+              <Link 
+                to="/dashboard" 
+                className={cn("text-lg py-2 border-b border-gray-100 text-qubic-black/80", location.pathname === '/dashboard' && "text-qubic-blue font-medium")} 
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
                 Dashboard
               </Link>
-              <button onClick={() => {
-            // Add logout functionality here
-            setIsMobileMenuOpen(false);
-            window.location.href = '/';
-          }} className="flex items-center text-lg py-2 text-qubic-black/80">
+              <button 
+                onClick={handleLogout} 
+                className="flex items-center text-lg py-2 text-qubic-black/80"
+              >
                 <LogOut size={18} className="mr-2" />
                 <span>Cerrar sesión</span>
               </button>
-            </> : <>
-              <Link to="/login" className="btn-qubic-outline w-full text-center mb-2" onClick={() => setIsMobileMenuOpen(false)}>
+            </>
+          ) : (
+            <>
+              <Link 
+                to="/login" 
+                className="btn-qubic-outline w-full text-center mb-2" 
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
                 Iniciar sesión
               </Link>
-              <Link to="/login" className="btn-qubic w-full text-center" onClick={() => setIsMobileMenuOpen(false)}>
+              <Link 
+                to="/login" 
+                className="btn-qubic w-full text-center" 
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
                 Crear cuenta
               </Link>
-            </>}
+            </>
+          )}
         </nav>
       </div>
-    </header>;
+    </header>
+  );
 };
+
 export default Navbar;
