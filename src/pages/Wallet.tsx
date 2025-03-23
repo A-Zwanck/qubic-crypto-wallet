@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowDown, ArrowUp, Clock, CreditCard, ExternalLink, Filter, Search } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -10,40 +10,117 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
 
 const Wallet = () => {
-  const [balance] = useState(1250);
+  const [balance, setBalance] = useState(0);
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
+  const [walletId, setWalletId] = useState<string | null>(null);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+  
+  const { toast } = useToast();
 
-  // Mock transaction data
-  const transactions = [
-    { id: 1, type: 'deposit', amount: 250, date: '2023-05-15T14:30:00', status: 'completed' },
-    { id: 2, type: 'withdraw', amount: 100, date: '2023-05-14T10:15:00', status: 'completed' },
-    { id: 3, type: 'deposit', amount: 500, date: '2023-05-10T09:45:00', status: 'completed' },
-    { id: 4, type: 'withdraw', amount: 75, date: '2023-05-05T16:20:00', status: 'completed' },
-    { id: 5, type: 'deposit', amount: 300, date: '2023-05-01T11:10:00', status: 'completed' },
-    { id: 6, type: 'withdraw', amount: 150, date: '2023-04-28T13:25:00', status: 'completed' },
-    { id: 7, type: 'deposit', amount: 450, date: '2023-04-20T15:40:00', status: 'completed' },
-    { id: 8, type: 'withdraw', amount: 200, date: '2023-04-15T09:05:00', status: 'completed' },
-  ];
+  // Cargar datos del wallet y las transacciones
+  useEffect(() => {
+    const fetchWalletData = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Obtener el wallet del usuario actual
+        const { data: walletData, error: walletError } = await supabase
+          .from('wallets')
+          .select('*')
+          .limit(1)
+          .single();
+        
+        if (walletError) {
+          console.error('Error al cargar el wallet:', walletError);
+          toast({
+            title: 'Error',
+            description: 'No se pudo cargar la información de tu wallet',
+            variant: 'destructive',
+          });
+          return;
+        }
+        
+        if (walletData) {
+          setWalletId(walletData.id);
+          setBalance(parseFloat(walletData.balance));
+          
+          // Cargar transacciones del usuario
+          const { data: transactionsData, error: transactionsError } = await supabase
+            .from('transactions')
+            .select('*')
+            .order('created_at', { ascending: false });
+          
+          if (transactionsError) {
+            console.error('Error al cargar las transacciones:', transactionsError);
+            toast({
+              title: 'Error',
+              description: 'No se pudieron cargar tus transacciones',
+              variant: 'destructive',
+            });
+          } else if (transactionsData) {
+            setTransactions(transactionsData);
+          }
+        }
+      } catch (error) {
+        console.error('Error inesperado:', error);
+        toast({
+          title: 'Error',
+          description: 'Ha ocurrido un error inesperado',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  // Filter transactions based on search term and filter type
+    fetchWalletData();
+    
+    // Configurar escucha de cambios en tiempo real para las transacciones
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'transactions'
+        },
+        (payload) => {
+          // Actualizar las transacciones cuando haya cambios
+          fetchWalletData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [toast]);
+
+  // Filtrar transacciones basado en términos de búsqueda y filtros
   const filteredTransactions = transactions.filter(transaction => {
     const matchesSearch = searchTerm === '' || 
       transaction.amount.toString().includes(searchTerm) || 
-      new Date(transaction.date).toLocaleDateString().includes(searchTerm);
+      new Date(transaction.created_at).toLocaleDateString().includes(searchTerm);
     
     const matchesFilter = filterType === 'all' || transaction.type === filterType;
     
     return matchesSearch && matchesFilter;
   });
 
-  // Format date
+  // Formatear fecha
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('es-ES', { 
@@ -53,7 +130,7 @@ const Wallet = () => {
     });
   };
 
-  // Format time
+  // Formatear hora
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleTimeString('es-ES', { 
@@ -62,18 +139,191 @@ const Wallet = () => {
     });
   };
 
-  const handleDeposit = (e: React.FormEvent) => {
+  // Función para realizar un depósito
+  const handleDeposit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle deposit logic here
-    setIsDepositOpen(false);
-    setDepositAmount('');
+    
+    if (!walletId) {
+      toast({
+        title: 'Error',
+        description: 'No se encontró tu wallet',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    const amount = parseFloat(depositAmount);
+    
+    if (isNaN(amount) || amount <= 0) {
+      toast({
+        title: 'Error',
+        description: 'Por favor, introduce un monto válido',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    try {
+      setIsProcessing(true);
+      
+      // 1. Obtener la sesión para el user_id
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user.id;
+      
+      if (!userId) {
+        toast({
+          title: 'Error',
+          description: 'No se pudo identificar tu usuario',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      // 2. Crear la transacción
+      const { error: transactionError } = await supabase
+        .from('transactions')
+        .insert({
+          user_id: userId,
+          wallet_id: walletId,
+          type: 'deposit',
+          amount: amount,
+          status: 'completed'
+        });
+      
+      if (transactionError) {
+        throw transactionError;
+      }
+      
+      // 3. Actualizar el balance del wallet
+      const { error: walletError } = await supabase
+        .from('wallets')
+        .update({ balance: balance + amount })
+        .eq('id', walletId);
+      
+      if (walletError) {
+        throw walletError;
+      }
+      
+      // 4. Actualizar el estado local
+      setBalance(balance + amount);
+      
+      toast({
+        title: 'Depósito realizado',
+        description: `Has depositado ${amount.toFixed(2)} USDQ correctamente`,
+      });
+      
+      // Cerrar el diálogo y resetear el form
+      setIsDepositOpen(false);
+      setDepositAmount('');
+      
+    } catch (error) {
+      console.error('Error al procesar el depósito:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo completar el depósito',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  const handleWithdraw = (e: React.FormEvent) => {
+  // Función para realizar un retiro
+  const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle withdraw logic here
-    setIsWithdrawOpen(false);
-    setWithdrawAmount('');
+    
+    if (!walletId) {
+      toast({
+        title: 'Error',
+        description: 'No se encontró tu wallet',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    const amount = parseFloat(withdrawAmount);
+    
+    if (isNaN(amount) || amount <= 0) {
+      toast({
+        title: 'Error',
+        description: 'Por favor, introduce un monto válido',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    if (amount > balance) {
+      toast({
+        title: 'Fondos insuficientes',
+        description: 'No tienes suficiente saldo para realizar este retiro',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    try {
+      setIsProcessing(true);
+      
+      // 1. Obtener la sesión para el user_id
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user.id;
+      
+      if (!userId) {
+        toast({
+          title: 'Error',
+          description: 'No se pudo identificar tu usuario',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      // 2. Crear la transacción
+      const { error: transactionError } = await supabase
+        .from('transactions')
+        .insert({
+          user_id: userId,
+          wallet_id: walletId,
+          type: 'withdraw',
+          amount: amount,
+          status: 'completed'
+        });
+      
+      if (transactionError) {
+        throw transactionError;
+      }
+      
+      // 3. Actualizar el balance del wallet
+      const { error: walletError } = await supabase
+        .from('wallets')
+        .update({ balance: balance - amount })
+        .eq('id', walletId);
+      
+      if (walletError) {
+        throw walletError;
+      }
+      
+      // 4. Actualizar el estado local
+      setBalance(balance - amount);
+      
+      toast({
+        title: 'Retiro realizado',
+        description: `Has retirado ${amount.toFixed(2)} USDQ correctamente`,
+      });
+      
+      // Cerrar el diálogo y resetear el form
+      setIsWithdrawOpen(false);
+      setWithdrawAmount('');
+      
+    } catch (error) {
+      console.error('Error al procesar el retiro:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo completar el retiro',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -81,170 +331,177 @@ const Wallet = () => {
       <Navbar />
       
       <main className="flex-1 pt-24 pb-12 px-4 md:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h1 className="text-2xl font-bold text-qubic-black mb-6">Tu Wallet</h1>
-                <div className="bg-qubic-gray rounded-xl p-6">
-                  <div className="flex items-center mb-4">
-                    <div className="w-10 h-10 bg-qubic-blue rounded-full flex items-center justify-center text-white mr-3 font-bold">
-                      Q
-                    </div>
-                    <div>
-                      <p className="font-medium text-lg">USDQ</p>
-                      <p className="text-sm text-qubic-gray-dark">Stablecoin</p>
-                    </div>
-                  </div>
-                  
-                  <div className="mb-6">
-                    <h2 className="text-3xl font-bold text-qubic-black">{balance.toFixed(2)} USDQ</h2>
-                    <p className="text-qubic-gray-dark">≈ {balance.toFixed(2)} €</p>
-                  </div>
-                  
-                  <div className="flex gap-3">
-                    <Button 
-                      onClick={() => setIsDepositOpen(true)}
-                      className="flex-1 flex items-center justify-center bg-qubic-blue hover:bg-qubic-blue-dark"
-                    >
-                      <ArrowDown size={18} className="mr-2" />
-                      Depositar
-                    </Button>
-                    <Button 
-                      onClick={() => setIsWithdrawOpen(true)}
-                      variant="outline"
-                      className="flex-1 flex items-center justify-center border-qubic-blue text-qubic-blue hover:bg-qubic-blue/5"
-                    >
-                      <ArrowUp size={18} className="mr-2" />
-                      Retirar
-                    </Button>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="bg-white rounded-xl">
-                <div className="h-full flex flex-col justify-center items-center text-center p-6">
-                  <div className="w-16 h-16 bg-qubic-blue/10 rounded-full flex items-center justify-center mb-4">
-                    <CreditCard size={30} className="text-qubic-blue" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-qubic-black mb-2">Compra cripto sin comisiones</h3>
-                  <p className="text-qubic-gray-dark mb-6">
-                    Aprovecha la tecnología Qubic para comprar y vender criptoactivos sin pagar comisiones de red.
-                  </p>
-                  <Button 
-                    onClick={() => setIsDepositOpen(true)}
-                    className="bg-qubic-blue hover:bg-qubic-blue-dark"
-                  >
-                    Comprar ahora
-                  </Button>
-                </div>
-              </div>
-            </div>
+        {isLoading ? (
+          <div className="min-h-[50vh] flex items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-qubic-blue" />
+            <span className="ml-2 text-qubic-gray-dark">Cargando wallet...</span>
           </div>
-          
-          {/* Transactions History */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-              <h2 className="text-xl font-bold text-qubic-black mb-4 md:mb-0">Historial de movimientos</h2>
-              
-              <div className="flex flex-col md:flex-row w-full md:w-auto gap-4">
-                <div className="relative">
-                  <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-qubic-gray-dark" />
-                  <Input 
-                    type="text"
-                    placeholder="Buscar transacciones..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 w-full md:w-60"
-                  />
+        ) : (
+          <div className="max-w-7xl mx-auto">
+            <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h1 className="text-2xl font-bold text-qubic-black mb-6">Tu Wallet</h1>
+                  <div className="bg-qubic-gray rounded-xl p-6">
+                    <div className="flex items-center mb-4">
+                      <div className="w-10 h-10 bg-qubic-blue rounded-full flex items-center justify-center text-white mr-3 font-bold">
+                        Q
+                      </div>
+                      <div>
+                        <p className="font-medium text-lg">USDQ</p>
+                        <p className="text-sm text-qubic-gray-dark">Stablecoin</p>
+                      </div>
+                    </div>
+                    
+                    <div className="mb-6">
+                      <h2 className="text-3xl font-bold text-qubic-black">{balance.toFixed(2)} USDQ</h2>
+                      <p className="text-qubic-gray-dark">≈ {balance.toFixed(2)} €</p>
+                    </div>
+                    
+                    <div className="flex gap-3">
+                      <Button 
+                        onClick={() => setIsDepositOpen(true)}
+                        className="flex-1 flex items-center justify-center bg-qubic-blue hover:bg-qubic-blue-dark"
+                      >
+                        <ArrowDown size={18} className="mr-2" />
+                        Depositar
+                      </Button>
+                      <Button 
+                        onClick={() => setIsWithdrawOpen(true)}
+                        variant="outline"
+                        className="flex-1 flex items-center justify-center border-qubic-blue text-qubic-blue hover:bg-qubic-blue/5"
+                      >
+                        <ArrowUp size={18} className="mr-2" />
+                        Retirar
+                      </Button>
+                    </div>
+                  </div>
                 </div>
                 
-                <div className="relative">
-                  <Filter size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-qubic-gray-dark" />
-                  <select
-                    value={filterType}
-                    onChange={(e) => setFilterType(e.target.value)}
-                    className="pl-10 pr-4 py-2 border border-gray-200 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-qubic-blue/20 focus:border-qubic-blue"
-                  >
-                    <option value="all">Todos los movimientos</option>
-                    <option value="deposit">Solo depósitos</option>
-                    <option value="withdraw">Solo retiros</option>
-                  </select>
+                <div className="bg-white rounded-xl">
+                  <div className="h-full flex flex-col justify-center items-center text-center p-6">
+                    <div className="w-16 h-16 bg-qubic-blue/10 rounded-full flex items-center justify-center mb-4">
+                      <CreditCard size={30} className="text-qubic-blue" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-qubic-black mb-2">Compra cripto sin comisiones</h3>
+                    <p className="text-qubic-gray-dark mb-6">
+                      Aprovecha la tecnología Qubic para comprar y vender criptoactivos sin pagar comisiones de red.
+                    </p>
+                    <Button 
+                      onClick={() => setIsDepositOpen(true)}
+                      className="bg-qubic-blue hover:bg-qubic-blue-dark"
+                    >
+                      Comprar ahora
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
             
-            {filteredTransactions.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-100">
-                      <th className="text-left p-3 text-qubic-gray-dark font-medium">Tipo</th>
-                      <th className="text-left p-3 text-qubic-gray-dark font-medium">Fecha</th>
-                      <th className="text-left p-3 text-qubic-gray-dark font-medium">Hora</th>
-                      <th className="text-right p-3 text-qubic-gray-dark font-medium">Monto</th>
-                      <th className="text-right p-3 text-qubic-gray-dark font-medium">Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredTransactions.map((transaction) => (
-                      <tr 
-                        key={transaction.id} 
-                        className="border-b border-gray-50 hover:bg-gray-50 transition-colors"
-                      >
-                        <td className="p-3">
-                          <div className="flex items-center">
-                            <div 
-                              className={cn(
-                                "w-8 h-8 rounded-full flex items-center justify-center mr-3",
-                                transaction.type === 'deposit' 
-                                  ? "bg-green-100 text-green-600" 
-                                  : "bg-blue-100 text-blue-600"
-                              )}
-                            >
-                              {transaction.type === 'deposit' ? <ArrowDown size={16} /> : <ArrowUp size={16} />}
-                            </div>
-                            <span className="font-medium">
-                              {transaction.type === 'deposit' ? 'Depósito' : 'Retiro'}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="p-3 text-qubic-gray-dark">
-                          {formatDate(transaction.date)}
-                        </td>
-                        <td className="p-3 text-qubic-gray-dark">
-                          {formatTime(transaction.date)}
-                        </td>
-                        <td className={cn(
-                          "p-3 text-right font-medium",
-                          transaction.type === 'deposit' ? "text-green-600" : "text-blue-600"
-                        )}>
-                          {transaction.type === 'deposit' ? '+' : '-'}{transaction.amount.toFixed(2)} USDQ
-                        </td>
-                        <td className="p-3 text-right">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            Completado
-                          </span>
-                        </td>
+            {/* Historial de Transacciones */}
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                <h2 className="text-xl font-bold text-qubic-black mb-4 md:mb-0">Historial de movimientos</h2>
+                
+                <div className="flex flex-col md:flex-row w-full md:w-auto gap-4">
+                  <div className="relative">
+                    <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-qubic-gray-dark" />
+                    <Input 
+                      type="text"
+                      placeholder="Buscar transacciones..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10 w-full md:w-60"
+                    />
+                  </div>
+                  
+                  <div className="relative">
+                    <Filter size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-qubic-gray-dark" />
+                    <select
+                      value={filterType}
+                      onChange={(e) => setFilterType(e.target.value)}
+                      className="pl-10 pr-4 py-2 border border-gray-200 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-qubic-blue/20 focus:border-qubic-blue"
+                    >
+                      <option value="all">Todos los movimientos</option>
+                      <option value="deposit">Solo depósitos</option>
+                      <option value="withdraw">Solo retiros</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              
+              {filteredTransactions.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-100">
+                        <th className="text-left p-3 text-qubic-gray-dark font-medium">Tipo</th>
+                        <th className="text-left p-3 text-qubic-gray-dark font-medium">Fecha</th>
+                        <th className="text-left p-3 text-qubic-gray-dark font-medium">Hora</th>
+                        <th className="text-right p-3 text-qubic-gray-dark font-medium">Monto</th>
+                        <th className="text-right p-3 text-qubic-gray-dark font-medium">Estado</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <Clock size={40} className="mx-auto text-qubic-gray-dark mb-4 opacity-50" />
-                <h3 className="text-lg font-medium text-qubic-black mb-1">No hay transacciones</h3>
-                <p className="text-qubic-gray-dark">
-                  No se encontraron transacciones que coincidan con tu búsqueda.
-                </p>
-              </div>
-            )}
+                    </thead>
+                    <tbody>
+                      {filteredTransactions.map((transaction) => (
+                        <tr 
+                          key={transaction.id} 
+                          className="border-b border-gray-50 hover:bg-gray-50 transition-colors"
+                        >
+                          <td className="p-3">
+                            <div className="flex items-center">
+                              <div 
+                                className={cn(
+                                  "w-8 h-8 rounded-full flex items-center justify-center mr-3",
+                                  transaction.type === 'deposit' 
+                                    ? "bg-green-100 text-green-600" 
+                                    : "bg-blue-100 text-blue-600"
+                                )}
+                              >
+                                {transaction.type === 'deposit' ? <ArrowDown size={16} /> : <ArrowUp size={16} />}
+                              </div>
+                              <span className="font-medium">
+                                {transaction.type === 'deposit' ? 'Depósito' : 'Retiro'}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="p-3 text-qubic-gray-dark">
+                            {formatDate(transaction.created_at)}
+                          </td>
+                          <td className="p-3 text-qubic-gray-dark">
+                            {formatTime(transaction.created_at)}
+                          </td>
+                          <td className={cn(
+                            "p-3 text-right font-medium",
+                            transaction.type === 'deposit' ? "text-green-600" : "text-blue-600"
+                          )}>
+                            {transaction.type === 'deposit' ? '+' : '-'}{parseFloat(transaction.amount).toFixed(2)} USDQ
+                          </td>
+                          <td className="p-3 text-right">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              Completado
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <Clock size={40} className="mx-auto text-qubic-gray-dark mb-4 opacity-50" />
+                  <h3 className="text-lg font-medium text-qubic-black mb-1">No hay transacciones</h3>
+                  <p className="text-qubic-gray-dark">
+                    No se encontraron transacciones que coincidan con tu búsqueda.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </main>
       
-      {/* Deposit Dialog */}
+      {/* Diálogo de Depósito */}
       <Dialog open={isDepositOpen} onOpenChange={setIsDepositOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -309,11 +566,18 @@ const Wallet = () => {
                 </div>
                 
                 <DialogFooter className="mt-6">
-                  <Button type="button" variant="outline" onClick={() => setIsDepositOpen(false)}>
+                  <Button type="button" variant="outline" onClick={() => setIsDepositOpen(false)} disabled={isProcessing}>
                     Cancelar
                   </Button>
-                  <Button type="submit" className="bg-qubic-blue hover:bg-qubic-blue-dark">
-                    Depositar
+                  <Button type="submit" className="bg-qubic-blue hover:bg-qubic-blue-dark" disabled={isProcessing}>
+                    {isProcessing ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Procesando...
+                      </>
+                    ) : (
+                      'Depositar'
+                    )}
                   </Button>
                 </DialogFooter>
               </form>
@@ -369,7 +633,7 @@ const Wallet = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Withdraw Dialog */}
+      {/* Diálogo de Retiro */}
       <Dialog open={isWithdrawOpen} onOpenChange={setIsWithdrawOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -439,11 +703,18 @@ const Wallet = () => {
             </div>
             
             <DialogFooter className="mt-6">
-              <Button type="button" variant="outline" onClick={() => setIsWithdrawOpen(false)}>
+              <Button type="button" variant="outline" onClick={() => setIsWithdrawOpen(false)} disabled={isProcessing}>
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-qubic-blue hover:bg-qubic-blue-dark">
-                Retirar
+              <Button type="submit" className="bg-qubic-blue hover:bg-qubic-blue-dark" disabled={isProcessing}>
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Procesando...
+                  </>
+                ) : (
+                  'Retirar'
+                )}
               </Button>
             </DialogFooter>
           </form>
