@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Download, FileText, Info, ArrowUpRight } from 'lucide-react';
-import Navbar from '@/components/navbar';  // Updated path from @/components/Navbar
+import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import SupportChat from '@/components/SupportChat';
 import { Button } from '@/components/ui/button';
