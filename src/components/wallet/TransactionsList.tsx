@@ -1,15 +1,16 @@
 
 import React from 'react';
-import { ArrowDown, ArrowUp, Clock, Search, Filter } from 'lucide-react';
+import { ArrowDown, ArrowUp, Clock, Search, Filter, TrendingUp } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
 type Transaction = {
   id: string;
-  type: 'deposit' | 'withdraw';
+  type: 'deposit' | 'withdraw' | 'investment';
   amount: number;
   created_at: string;
   status: string;
+  details?: string;
 };
 
 interface TransactionsListProps {
@@ -33,7 +34,8 @@ const TransactionsList = ({
   const filteredTransactions = transactions.filter(transaction => {
     const matchesSearch = searchTerm === '' || 
       transaction.amount.toString().includes(searchTerm) || 
-      new Date(transaction.created_at).toLocaleDateString().includes(searchTerm);
+      new Date(transaction.created_at).toLocaleDateString().includes(searchTerm) ||
+      (transaction.details && transaction.details.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesFilter = filterType === 'all' || transaction.type === filterType;
     
@@ -57,6 +59,36 @@ const TransactionsList = ({
       hour: '2-digit', 
       minute: '2-digit' 
     });
+  };
+
+  // Get transaction icon and text based on type
+  const getTransactionInfo = (type: 'deposit' | 'withdraw' | 'investment') => {
+    switch (type) {
+      case 'deposit':
+        return {
+          icon: <ArrowDown size={16} />,
+          bgColor: 'bg-green-100 text-green-600',
+          textColor: 'text-green-600',
+          label: 'Depósito',
+          prefix: '+'
+        };
+      case 'withdraw':
+        return {
+          icon: <ArrowUp size={16} />,
+          bgColor: 'bg-blue-100 text-blue-600',
+          textColor: 'text-blue-600',
+          label: 'Retiro',
+          prefix: '-'
+        };
+      case 'investment':
+        return {
+          icon: <TrendingUp size={16} />,
+          bgColor: 'bg-purple-100 text-purple-600',
+          textColor: 'text-purple-600',
+          label: 'Inversión',
+          prefix: '-'
+        };
+    }
   };
 
   return (
@@ -86,6 +118,7 @@ const TransactionsList = ({
               <option value="all">Todos los movimientos</option>
               <option value="deposit">Solo depósitos</option>
               <option value="withdraw">Solo retiros</option>
+              <option value="investment">Solo inversiones</option>
             </select>
           </div>
         </div>
@@ -104,47 +137,53 @@ const TransactionsList = ({
               </tr>
             </thead>
             <tbody>
-              {filteredTransactions.map((transaction) => (
-                <tr 
-                  key={transaction.id} 
-                  className="border-b border-gray-50 hover:bg-gray-50 transition-colors"
-                >
-                  <td className="p-3">
-                    <div className="flex items-center">
-                      <div 
-                        className={cn(
-                          "w-8 h-8 rounded-full flex items-center justify-center mr-3",
-                          transaction.type === 'deposit' 
-                            ? "bg-green-100 text-green-600" 
-                            : "bg-blue-100 text-blue-600"
-                        )}
-                      >
-                        {transaction.type === 'deposit' ? <ArrowDown size={16} /> : <ArrowUp size={16} />}
+              {filteredTransactions.map((transaction) => {
+                const transactionInfo = getTransactionInfo(transaction.type);
+                return (
+                  <tr 
+                    key={transaction.id} 
+                    className="border-b border-gray-50 hover:bg-gray-50 transition-colors"
+                  >
+                    <td className="p-3">
+                      <div className="flex items-center">
+                        <div 
+                          className={cn(
+                            "w-8 h-8 rounded-full flex items-center justify-center mr-3",
+                            transactionInfo.bgColor
+                          )}
+                        >
+                          {transactionInfo.icon}
+                        </div>
+                        <div>
+                          <span className="font-medium">
+                            {transactionInfo.label}
+                          </span>
+                          {transaction.details && (
+                            <p className="text-xs text-qubic-gray-dark">{transaction.details}</p>
+                          )}
+                        </div>
                       </div>
-                      <span className="font-medium">
-                        {transaction.type === 'deposit' ? 'Depósito' : 'Retiro'}
+                    </td>
+                    <td className="p-3 text-qubic-gray-dark">
+                      {formatDate(transaction.created_at)}
+                    </td>
+                    <td className="p-3 text-qubic-gray-dark">
+                      {formatTime(transaction.created_at)}
+                    </td>
+                    <td className={cn(
+                      "p-3 text-right font-medium",
+                      transactionInfo.textColor
+                    )}>
+                      {transactionInfo.prefix}{transaction.amount.toFixed(2)} USDQ
+                    </td>
+                    <td className="p-3 text-right">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        Completado
                       </span>
-                    </div>
-                  </td>
-                  <td className="p-3 text-qubic-gray-dark">
-                    {formatDate(transaction.created_at)}
-                  </td>
-                  <td className="p-3 text-qubic-gray-dark">
-                    {formatTime(transaction.created_at)}
-                  </td>
-                  <td className={cn(
-                    "p-3 text-right font-medium",
-                    transaction.type === 'deposit' ? "text-green-600" : "text-blue-600"
-                  )}>
-                    {transaction.type === 'deposit' ? '+' : '-'}{parseFloat(transaction.amount).toFixed(2)} USDQ
-                  </td>
-                  <td className="p-3 text-right">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      Completado
-                    </span>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

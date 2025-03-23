@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Info, TrendingUp, ArrowRight, ExternalLink, AlertTriangle, Search, Tag, Filter } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { useWalletService } from '@/hooks/useWalletService';
 
 // Project data
 const projects = [
@@ -88,6 +89,20 @@ const Projects = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedRiskLevel, setSelectedRiskLevel] = useState('all');
+  
+  // Obtener el servicio de wallet
+  const {
+    balance,
+    isLoading,
+    isProcessing,
+    fetchWalletData,
+    handleInvestment
+  } = useWalletService();
+  
+  // Cargar el balance de la wallet al montar el componente
+  useEffect(() => {
+    fetchWalletData();
+  }, []);
 
   // Filter projects based on search term, category, and risk level
   const filteredProjects = projects.filter(project => {
@@ -114,12 +129,21 @@ const Projects = () => {
     }
   };
 
-  const handleInvest = (e: React.FormEvent) => {
+  const handleInvest = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle investment logic here
-    setIsInvestDialogOpen(false);
-    setInvestAmount('');
-    // Show success message
+    
+    if (!selectedProject) return;
+    
+    const amount = parseFloat(investAmount);
+    if (isNaN(amount) || amount <= 0) return;
+    
+    // Usar el servicio de wallet para procesar la inversión
+    const success = await handleInvestment(amount, selectedProject.name);
+    
+    if (success) {
+      setIsInvestDialogOpen(false);
+      setInvestAmount('');
+    }
   };
 
   // Get unique categories and risk levels for filters
@@ -413,7 +437,7 @@ const Projects = () => {
                     />
                     <div className="flex justify-between text-xs">
                       <span className="text-qubic-gray-dark">Mínimo: {selectedProject.minInvestment} USDQ</span>
-                      <span className="text-qubic-gray-dark">Disponible: 1,250.00 USDQ</span>
+                      <span className="text-qubic-gray-dark">Disponible: {balance.toFixed(2)} USDQ</span>
                     </div>
                   </div>
                   
@@ -447,14 +471,26 @@ const Projects = () => {
                     type="button" 
                     variant="outline" 
                     onClick={() => setIsInvestDialogOpen(false)}
+                    disabled={isProcessing}
                   >
                     Cancelar
                   </Button>
                   <Button 
                     type="submit" 
                     className="bg-qubic-blue hover:bg-qubic-blue-dark"
+                    disabled={isProcessing}
                   >
-                    Confirmar inversión
+                    {isProcessing ? (
+                      <>
+                        <span className="mr-2">Procesando</span>
+                        <span className="animate-spin">
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                        </span>
+                      </>
+                    ) : 'Confirmar inversión'}
                   </Button>
                 </DialogFooter>
               </form>

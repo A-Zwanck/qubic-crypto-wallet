@@ -7,7 +7,7 @@ type Transaction = {
   id: string;
   user_id: string;
   wallet_id: string;
-  type: 'deposit' | 'withdraw';
+  type: 'deposit' | 'withdraw' | 'investment';
   amount: number;
   status: string;
   created_at: string;
@@ -63,7 +63,13 @@ export const useWalletService = () => {
             variant: 'destructive',
           });
         } else if (transactionsData) {
-          setTransactions(transactionsData);
+          // Ensure type safety by mapping transaction data
+          const typedTransactions = transactionsData.map(transaction => ({
+            ...transaction,
+            type: transaction.type as 'deposit' | 'withdraw' | 'investment',
+            amount: typeof transaction.amount === 'string' ? parseFloat(transaction.amount) : transaction.amount
+          }));
+          setTransactions(typedTransactions);
         }
       } else {
         // If there's no wallet, the user might have just registered and the trigger hasn't executed yet
@@ -279,6 +285,99 @@ export const useWalletService = () => {
     }
   };
 
+  // Nueva función para manejar inversiones
+  const handleInvestment = async (amount: number, projectName: string) => {
+    if (!walletId) {
+      toast({
+        title: 'Error',
+        description: 'No se encontró tu wallet',
+        variant: 'destructive',
+      });
+      return false;
+    }
+    
+    if (isNaN(amount) || amount <= 0) {
+      toast({
+        title: 'Error',
+        description: 'Por favor, introduce un monto válido',
+        variant: 'destructive',
+      });
+      return false;
+    }
+    
+    if (amount > balance) {
+      toast({
+        title: 'Fondos insuficientes',
+        description: 'No tienes suficiente saldo para realizar esta inversión',
+        variant: 'destructive',
+      });
+      return false;
+    }
+    
+    try {
+      setIsProcessing(true);
+      
+      // 1. Get session for user_id
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user.id;
+      
+      if (!userId) {
+        toast({
+          title: 'Error',
+          description: 'No se pudo identificar tu usuario',
+          variant: 'destructive',
+        });
+        return false;
+      }
+      
+      // 2. Create the transaction
+      const { error: transactionError } = await supabase
+        .from('transactions')
+        .insert({
+          user_id: userId,
+          wallet_id: walletId,
+          type: 'investment',
+          amount: amount,
+          status: 'completed',
+          details: projectName
+        });
+      
+      if (transactionError) {
+        throw transactionError;
+      }
+      
+      // 3. Update the wallet balance
+      const { error: walletError } = await supabase
+        .from('wallets')
+        .update({ balance: balance - amount })
+        .eq('id', walletId);
+      
+      if (walletError) {
+        throw walletError;
+      }
+      
+      // 4. Update local state
+      setBalance(balance - amount);
+      
+      toast({
+        title: 'Inversión realizada',
+        description: `Has invertido ${amount.toFixed(2)} USDQ en ${projectName} correctamente`,
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Error al procesar la inversión:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo completar la inversión',
+        variant: 'destructive',
+      });
+      return false;
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return {
     balance,
     transactions,
@@ -286,6 +385,7 @@ export const useWalletService = () => {
     isProcessing,
     fetchWalletData,
     handleDeposit,
-    handleWithdraw
+    handleWithdraw,
+    handleInvestment
   };
 };
