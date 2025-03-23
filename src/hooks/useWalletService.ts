@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -11,6 +11,7 @@ type Transaction = {
   amount: number;
   status: string;
   created_at: string;
+  details?: string;
 };
 
 export const useWalletService = () => {
@@ -363,6 +364,9 @@ export const useWalletService = () => {
         title: 'Inversión realizada',
         description: `Has invertido ${amount.toFixed(2)} USDQ en ${projectName} correctamente`,
       });
+      
+      // Actualizar la lista de transacciones
+      fetchWalletData();
       
       return true;
     } catch (error) {

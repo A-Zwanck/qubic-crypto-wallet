@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Info, TrendingUp, ArrowRight, ExternalLink, AlertTriangle, Search, Tag, Filter } from 'lucide-react';
 import Navbar from '@/components/Navbar';
@@ -10,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { useWalletService } from '@/hooks/useWalletService';
+import { useToast } from '@/hooks/use-toast';
 
 // Project data
 const projects = [
@@ -99,6 +99,8 @@ const Projects = () => {
     handleInvestment
   } = useWalletService();
   
+  const { toast } = useToast();
+  
   // Cargar el balance de la wallet al montar el componente
   useEffect(() => {
     fetchWalletData();
@@ -135,7 +137,23 @@ const Projects = () => {
     if (!selectedProject) return;
     
     const amount = parseFloat(investAmount);
-    if (isNaN(amount) || amount <= 0) return;
+    if (isNaN(amount) || amount <= 0) {
+      toast({
+        title: 'Error',
+        description: 'Por favor, introduce un monto válido',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    if (amount > balance) {
+      toast({
+        title: 'Fondos insuficientes',
+        description: 'No tienes suficiente saldo para realizar esta inversión',
+        variant: 'destructive',
+      });
+      return;
+    }
     
     // Usar el servicio de wallet para procesar la inversión
     const success = await handleInvestment(amount, selectedProject.name);
@@ -143,6 +161,10 @@ const Projects = () => {
     if (success) {
       setIsInvestDialogOpen(false);
       setInvestAmount('');
+      toast({
+        title: 'Inversión realizada',
+        description: `Has invertido ${amount.toFixed(2)} USDQ en ${selectedProject.name} correctamente`,
+      });
     }
   };
 
@@ -162,6 +184,10 @@ const Projects = () => {
               Explora y participa en proyectos DeFi seleccionados con los mejores rendimientos y niveles de riesgo variados.
               Todos operan en la red Qubic sin comisiones.
             </p>
+            <div className="mt-4 bg-white p-4 rounded-lg flex items-center">
+              <span className="text-qubic-gray-dark mr-2">Balance disponible:</span>
+              <span className="font-bold text-qubic-blue">{balance.toFixed(2)} USDQ</span>
+            </div>
           </div>
           
           {/* Filters */}

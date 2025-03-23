@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ArrowDown, ArrowUp, Clock, Search, Filter, TrendingUp } from 'lucide-react';
 import { Input } from '@/components/ui/input';
