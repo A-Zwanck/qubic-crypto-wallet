@@ -5,6 +5,7 @@ import { Menu, X, LogOut, ChevronDown, User } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -16,31 +17,20 @@ const Navbar = () => {
 
   // Check if user is authenticated
   useEffect(() => {
-    const checkAuth = () => {
-      const userJson = localStorage.getItem('authenticatedUser');
-      if (userJson) {
-        try {
-          const userData = JSON.parse(userJson);
-          setUser(userData);
-        } catch (e) {
-          // Handle invalid JSON
-          localStorage.removeItem('authenticatedUser');
-          setUser(null);
-        }
-      } else {
-        setUser(null);
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setUser(session?.user ?? null);
       }
-    };
-    
-    checkAuth();
-    
-    // Add event listener for auth changes
-    window.addEventListener('storage', checkAuth);
-    
-    return () => {
-      window.removeEventListener('storage', checkAuth);
-    };
-  }, [location.pathname]);
+    );
+
+    // Initial session check
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -54,24 +44,30 @@ const Navbar = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
   
-  const handleLogout = () => {
-    // Remove user from localStorage
-    localStorage.removeItem('authenticatedUser');
-    
-    // Update state
-    setUser(null);
-    
-    // Close mobile menu if open
-    setIsMobileMenuOpen(false);
-    
-    // Show logout toast
-    toast({
-      title: 'Sesión cerrada',
-      description: 'Has cerrado sesión correctamente',
-    });
-    
-    // Redirect to home page
-    navigate('/');
+  const handleLogout = async () => {
+    try {
+      // Sign out with Supabase
+      await supabase.auth.signOut();
+      
+      // Close mobile menu if open
+      setIsMobileMenuOpen(false);
+      
+      // Show logout toast
+      toast({
+        title: 'Sesión cerrada',
+        description: 'Has cerrado sesión correctamente',
+      });
+      
+      // Redirect to home page
+      navigate('/');
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+      toast({
+        title: 'Error',
+        description: 'Hubo un problema al cerrar la sesión',
+        variant: 'destructive',
+      });
+    }
   };
   
   const isAuthenticated = !!user;
@@ -100,7 +96,7 @@ const Navbar = () => {
               </Link>
               <div className="relative group">
                 <button className="flex items-center space-x-1 text-qubic-black/80 hover:text-qubic-blue transition-colors">
-                  <span>{user?.name || 'Mi Cuenta'}</span>
+                  <span>{user?.email || 'Mi Cuenta'}</span>
                   <ChevronDown size={16} />
                 </button>
                 <div className="absolute right-0 w-48 mt-2 origin-top-right bg-white rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
@@ -142,8 +138,7 @@ const Navbar = () => {
                       <User size={24} className="text-qubic-blue" />
                     </div>
                     <div>
-                      <div className="font-medium text-qubic-black">{user.name}</div>
-                      <div className="text-sm text-qubic-gray-dark">{user.email}</div>
+                      <div className="font-medium text-qubic-black">{user.email}</div>
                     </div>
                   </div>
                 </div>

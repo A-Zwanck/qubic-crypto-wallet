@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -23,11 +24,25 @@ const Login = () => {
   
   // Check if user is already authenticated
   useEffect(() => {
-    const user = localStorage.getItem('authenticatedUser');
-    if (user) {
-      const redirectPath = location.state?.from || '/wallet';
-      navigate(redirectPath);
-    }
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (session) {
+          const redirectPath = location.state?.from || '/wallet';
+          navigate(redirectPath);
+        }
+      }
+    );
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        const redirectPath = location.state?.from || '/wallet';
+        navigate(redirectPath);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, [navigate, location]);
 
   const toggleView = () => {
@@ -72,108 +87,62 @@ const Login = () => {
     
     try {
       if (isLogin) {
-        // Login logic
-        await loginUser(email, password);
+        // Login with Supabase
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        
+        if (error) throw error;
+        
+        // Show success toast
+        toast({
+          title: '¡Bienvenido de nuevo!',
+          description: `Has iniciado sesión correctamente`,
+        });
+        
+        // Redirect to wallet page on success
+        const redirectPath = location.state?.from || '/wallet';
+        navigate(redirectPath);
       } else {
-        // Registration logic
-        await registerUser(email, password, name);
+        // Register with Supabase
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              name,
+            },
+          },
+        });
+        
+        if (error) throw error;
+        
+        // Show success toast
+        toast({
+          title: '¡Cuenta creada con éxito!',
+          description: 'Bienvenido a QUBIC WALLET',
+        });
+        
+        // Redirect to wallet page on success
+        navigate('/wallet');
       }
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
+    } catch (err: any) {
+      console.error('Authentication error:', err);
+      if (err.message) {
+        // Handle specific error messages
+        if (err.message.includes('User already registered')) {
+          setError('Este email ya está registrado');
+        } else if (err.message.includes('Invalid login credentials')) {
+          setError('Credenciales incorrectas');
+        } else {
+          setError(err.message);
+        }
       } else {
         setError('Ha ocurrido un error. Por favor, inténtalo de nuevo');
       }
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const loginUser = async (email: string, password: string) => {
-    try {
-      // For demo purposes, get users from localStorage
-      const usersJSON = localStorage.getItem('users');
-      const users = usersJSON ? JSON.parse(usersJSON) : [];
-      
-      // Find user with matching email
-      const user = users.find((u: any) => u.email === email);
-      
-      if (!user) {
-        throw new Error('Usuario no encontrado');
-      }
-      
-      // Check password (in a real app, you would use proper password hashing)
-      if (user.password !== password) {
-        throw new Error('Contraseña incorrecta');
-      }
-      
-      // Set authenticated user in localStorage
-      const authenticatedUser = {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-      };
-      
-      localStorage.setItem('authenticatedUser', JSON.stringify(authenticatedUser));
-      
-      // Show success toast
-      toast({
-        title: '¡Bienvenido de nuevo!',
-        description: `Has iniciado sesión como ${user.name}`,
-      });
-      
-      // Redirect to wallet page on success
-      const redirectPath = location.state?.from || '/wallet';
-      navigate(redirectPath);
-    } catch (error) {
-      throw error;
-    }
-  };
-
-  const registerUser = async (email: string, password: string, name: string) => {
-    try {
-      // For demo purposes, get and update users in localStorage
-      const usersJSON = localStorage.getItem('users');
-      const users = usersJSON ? JSON.parse(usersJSON) : [];
-      
-      // Check if user with this email already exists
-      const existingUser = users.find((u: any) => u.email === email);
-      if (existingUser) {
-        throw new Error('Este email ya está registrado');
-      }
-      
-      // Create new user
-      const newUser = {
-        id: Date.now().toString(),
-        email,
-        password, // In a real app, you would hash this password
-        name,
-        createdAt: new Date().toISOString(),
-      };
-      
-      // Add to users array and save to localStorage
-      users.push(newUser);
-      localStorage.setItem('users', JSON.stringify(users));
-      
-      // Set authenticated user in localStorage
-      const authenticatedUser = {
-        id: newUser.id,
-        email: newUser.email,
-        name: newUser.name,
-      };
-      
-      localStorage.setItem('authenticatedUser', JSON.stringify(authenticatedUser));
-      
-      // Show success toast
-      toast({
-        title: '¡Cuenta creada con éxito!',
-        description: 'Bienvenido a QUBIC WALLET',
-      });
-      
-      // Redirect to wallet page on success
-      navigate('/wallet');
-    } catch (error) {
-      throw error;
     }
   };
 
