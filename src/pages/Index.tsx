@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Shield, BarChart3, MessageCircle, CreditCard, TrendingUp, Lock, DollarSign } from 'lucide-react';
-import Navbar from '@/components/Navbar';
+import Navbar from '@/components/navbar';  // Updated path from @/components/Navbar
 import Footer from '@/components/Footer';
 import SupportChat from '@/components/SupportChat';
 const Index = () => {

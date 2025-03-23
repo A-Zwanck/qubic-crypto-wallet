@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { Info, TrendingUp, ArrowRight, ExternalLink, AlertTriangle, Search, Tag, Filter } from 'lucide-react';
-import Navbar from '@/components/Navbar';
+import Navbar from '@/components/navbar';  // Updated path from @/components/Navbar
 import Footer from '@/components/Footer';
 import SupportChat from '@/components/SupportChat';
 import { Button } from '@/components/ui/button';
