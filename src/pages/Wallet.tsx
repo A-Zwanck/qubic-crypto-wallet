@@ -40,7 +40,7 @@ const Wallet = () => {
           .from('wallets')
           .select('*')
           .limit(1)
-          .single();
+          .maybeSingle(); // Changed from .single() to .maybeSingle() to handle cases where no wallet exists
         
         if (walletError) {
           console.error('Error al cargar el wallet:', walletError);
@@ -54,7 +54,8 @@ const Wallet = () => {
         
         if (walletData) {
           setWalletId(walletData.id);
-          setBalance(parseFloat(walletData.balance));
+          // Convert balance to number before setting state
+          setBalance(typeof walletData.balance === 'string' ? parseFloat(walletData.balance) : walletData.balance);
           
           // Cargar transacciones del usuario
           const { data: transactionsData, error: transactionsError } = await supabase
@@ -71,6 +72,32 @@ const Wallet = () => {
             });
           } else if (transactionsData) {
             setTransactions(transactionsData);
+          }
+        } else {
+          // Si no hay wallet, es posible que el usuario acabe de registrarse y el trigger no haya sido ejecutado aún
+          toast({
+            title: 'Información',
+            description: 'Inicializando tu wallet. Puede tomar unos momentos.',
+            variant: 'default',
+          });
+          
+          // Intentamos crear un wallet para el usuario
+          const { data: sessionData } = await supabase.auth.getSession();
+          const userId = sessionData.session?.user.id;
+          
+          if (userId) {
+            const { data: newWallet, error: createError } = await supabase
+              .from('wallets')
+              .insert({ user_id: userId })
+              .select()
+              .single();
+            
+            if (createError) {
+              console.error('Error al crear wallet:', createError);
+            } else if (newWallet) {
+              setWalletId(newWallet.id);
+              setBalance(0);
+            }
           }
         }
       } catch (error) {
@@ -728,3 +755,4 @@ const Wallet = () => {
 };
 
 export default Wallet;
+
