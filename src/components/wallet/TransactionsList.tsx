@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { ArrowDown, ArrowUp, Clock, Search, Filter, TrendingUp } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -36,7 +37,17 @@ const TransactionsList = ({
       new Date(transaction.created_at).toLocaleDateString().includes(searchTerm) ||
       (transaction.details && transaction.details.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    const matchesFilter = filterType === 'all' || transaction.type === filterType;
+    // Check if it's an investment by looking at details field
+    const isInvestment = transaction.details?.startsWith('Inversión:');
+    
+    let matchesFilter = filterType === 'all';
+    if (filterType === 'deposit') {
+      matchesFilter = transaction.type === 'deposit';
+    } else if (filterType === 'withdraw') {
+      matchesFilter = transaction.type === 'withdraw' && !isInvestment;
+    } else if (filterType === 'investment') {
+      matchesFilter = isInvestment;
+    }
     
     return matchesSearch && matchesFilter;
   });
@@ -60,9 +71,22 @@ const TransactionsList = ({
     });
   };
 
-  // Get transaction icon and text based on type
-  const getTransactionInfo = (type: 'deposit' | 'withdraw' | 'investment') => {
-    switch (type) {
+  // Get transaction icon and text based on type and details
+  const getTransactionInfo = (transaction: Transaction) => {
+    // Check if this is an investment transaction based on details
+    const isInvestment = transaction.details?.startsWith('Inversión:');
+    
+    if (isInvestment) {
+      return {
+        icon: <TrendingUp size={16} />,
+        bgColor: 'bg-purple-100 text-purple-600',
+        textColor: 'text-purple-600',
+        label: 'Inversión',
+        prefix: '-'
+      };
+    }
+    
+    switch (transaction.type) {
       case 'deposit':
         return {
           icon: <ArrowDown size={16} />,
@@ -79,13 +103,13 @@ const TransactionsList = ({
           label: 'Retiro',
           prefix: '-'
         };
-      case 'investment':
+      default:
         return {
           icon: <TrendingUp size={16} />,
-          bgColor: 'bg-purple-100 text-purple-600',
-          textColor: 'text-purple-600',
-          label: 'Inversión',
-          prefix: '-'
+          bgColor: 'bg-gray-100 text-gray-600',
+          textColor: 'text-gray-600',
+          label: 'Otro',
+          prefix: ''
         };
     }
   };
@@ -137,7 +161,7 @@ const TransactionsList = ({
             </thead>
             <tbody>
               {filteredTransactions.map((transaction) => {
-                const transactionInfo = getTransactionInfo(transaction.type);
+                const transactionInfo = getTransactionInfo(transaction);
                 return (
                   <tr 
                     key={transaction.id} 
@@ -158,7 +182,11 @@ const TransactionsList = ({
                             {transactionInfo.label}
                           </span>
                           {transaction.details && (
-                            <p className="text-xs text-qubic-gray-dark">{transaction.details}</p>
+                            <p className="text-xs text-qubic-gray-dark">
+                              {transaction.details.startsWith('Inversión:') 
+                                ? transaction.details.replace('Inversión:', '').trim() 
+                                : transaction.details}
+                            </p>
                           )}
                         </div>
                       </div>

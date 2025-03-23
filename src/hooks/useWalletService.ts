@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -286,7 +285,7 @@ export const useWalletService = () => {
     }
   };
 
-  // Nueva función para manejar inversiones
+  // Investment function
   const handleInvestment = async (amount: number, projectName: string) => {
     if (!walletId) {
       toast({
@@ -331,16 +330,17 @@ export const useWalletService = () => {
         return false;
       }
       
-      // 2. Create the transaction
+      // 2. Create the transaction - Using "withdraw" type instead of "investment"
+      // because the database constraint only allows certain transaction types
       const { error: transactionError } = await supabase
         .from('transactions')
         .insert({
           user_id: userId,
           wallet_id: walletId,
-          type: 'investment',
+          type: 'withdraw', // Changed from 'investment' to 'withdraw' to pass the constraint
           amount: amount,
           status: 'completed',
-          details: projectName
+          details: `Inversión: ${projectName}` // We still track that it's an investment in the details
         });
       
       if (transactionError) {
