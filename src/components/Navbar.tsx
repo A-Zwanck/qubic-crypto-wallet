@@ -46,26 +46,47 @@ const Navbar = () => {
   
   const handleLogout = async () => {
     try {
-      // Asegurarse de que el menú móvil se cierre si está abierto
+      // Cerrar el menú móvil primero
       setIsMobileMenuOpen(false);
       
-      // Llamar al método signOut sin argumentos adicionales
-      const { error } = await supabase.auth.signOut();
+      // Obtener la sesión actual antes de cerrarla
+      const { data: sessionData } = await supabase.auth.getSession();
       
-      if (error) {
-        throw error;
+      // Solo intentar cerrar sesión si hay una sesión activa
+      if (sessionData && sessionData.session) {
+        await supabase.auth.signOut();
+        
+        // Mostrar toast de éxito
+        toast({
+          title: 'Sesión cerrada',
+          description: 'Has cerrado sesión correctamente',
+        });
+        
+        // Redirigir a la página de inicio
+        navigate('/');
+      } else {
+        // Si no hay sesión, simplemente redirigir y mostrar un mensaje
+        toast({
+          title: 'Información',
+          description: 'No hay una sesión activa para cerrar',
+        });
+        navigate('/');
+      }
+    } catch (error: any) {
+      console.error('Error al cerrar sesión:', error);
+      
+      // Verificar si el error es por sesión no encontrada y manejar ese caso
+      if (error?.name === 'AuthSessionMissingError') {
+        // Simplemente redirigir al inicio si no hay sesión
+        toast({
+          title: 'Información',
+          description: 'Sesión no encontrada, redirigiendo al inicio',
+        });
+        navigate('/');
+        return;
       }
       
-      // Mostrar toast de éxito
-      toast({
-        title: 'Sesión cerrada',
-        description: 'Has cerrado sesión correctamente',
-      });
-      
-      // Redirigir a la página de inicio
-      navigate('/');
-    } catch (error) {
-      console.error('Error al cerrar sesión:', error);
+      // Para otros errores, mostrar un mensaje genérico
       toast({
         title: 'Error',
         description: 'Hubo un problema al cerrar la sesión',
