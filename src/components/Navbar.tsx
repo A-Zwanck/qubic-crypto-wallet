@@ -46,19 +46,23 @@ const Navbar = () => {
   
   const handleLogout = async () => {
     try {
-      // Sign out with Supabase
-      await supabase.auth.signOut();
-      
-      // Close mobile menu if open
+      // Asegurarse de que el menú móvil se cierre si está abierto
       setIsMobileMenuOpen(false);
       
-      // Show logout toast
+      // Llamar al método signOut sin argumentos adicionales
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Mostrar toast de éxito
       toast({
         title: 'Sesión cerrada',
         description: 'Has cerrado sesión correctamente',
       });
       
-      // Redirect to home page
+      // Redirigir a la página de inicio
       navigate('/');
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
