@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
-import Navbar from '@/components/Navbar';
+import Navbar from '@/components/navbar';
 import Footer from '@/components/Footer';
 import SupportChat from '@/components/SupportChat';
 import WalletCard from '@/components/wallet/WalletCard';
