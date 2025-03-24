@@ -1,8 +1,16 @@
+
 #root {
-  max-width: 1280px;
+  max-width: 100%;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 1rem;
   text-align: center;
+}
+
+@media (min-width: 768px) {
+  #root {
+    max-width: 1280px;
+    padding: 2rem;
+  }
 }
 
 .logo {
@@ -34,9 +42,57 @@
 }
 
 .card {
-  padding: 2em;
+  padding: 1.5em;
+}
+
+@media (min-width: 768px) {
+  .card {
+    padding: 2em;
+  }
 }
 
 .read-the-docs {
   color: #888;
+}
+
+/* Mobile optimizations */
+@media (max-width: 767px) {
+  h1, h2, h3 {
+    word-break: break-word;
+  }
+  
+  button, a.btn {
+    touch-action: manipulation;
+  }
+  
+  input, select, textarea {
+    font-size: 16px !important; /* Prevents zoom on iOS */
+  }
+}
+
+/* Utility classes for mobile spacing */
+.p-mobile {
+  padding: 0.75rem !important;
+}
+
+.m-mobile {
+  margin: 0.75rem !important;
+}
+
+.gap-mobile {
+  gap: 0.75rem !important;
+}
+
+@media (min-width: 768px) {
+  .p-mobile {
+    padding: 1.5rem !important;
+  }
+  
+  .m-mobile {
+    margin: 1.5rem !important;
+  }
+  
+  .gap-mobile {
+    gap: 1.5rem !important;
+  }
 }

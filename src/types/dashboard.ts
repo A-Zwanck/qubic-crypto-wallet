@@ -31,3 +31,13 @@ export type EarningsData = {
   earningsPercentage: number;
   error?: any;
 };
+
+// Mobile view control types
+export type DashboardMobileView = 'summary' | 'performance' | 'investments' | 'allocation';
+
+// View state for responsive layouts
+export interface ResponsiveViewState {
+  activeTab: DashboardMobileView;
+  showDetails: boolean;
+  condensed: boolean;
+}

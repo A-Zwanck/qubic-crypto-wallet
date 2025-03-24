@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -13,7 +12,11 @@ export default {
 	theme: {
 		container: {
 			center: true,
-			padding: '2rem',
+			padding: {
+				DEFAULT: '1rem',
+				sm: '1.5rem',
+				md: '2rem',
+			},
 			screens: {
 				'2xl': '1400px'
 			}
@@ -72,6 +75,11 @@ export default {
 					black: '#1d1d1f'
 				}
 			},
+			// Mobile-first sizing and spacing
+			spacing: {
+				'mobile-gutter': 'var(--mobile-gutter, 1rem)',
+				'desktop-gutter': 'var(--desktop-gutter, 2rem)',
+			},
 			borderRadius: {
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',
@@ -102,6 +110,10 @@ export default {
 					'0%': { transform: 'translateX(-100%)' },
 					'100%': { transform: 'translateX(0)' }
 				},
+				'slide-in-bottom': {
+					'0%': { transform: 'translateY(100%)' },
+					'100%': { transform: 'translateY(0)' }
+				},
 				pulse: {
 					'0%, 100%': { opacity: '1' },
 					'50%': { opacity: '0.5' }
@@ -118,6 +130,7 @@ export default {
 				'fade-up': 'fade-up 0.5s ease-out',
 				'slide-in-right': 'slide-in-right 0.3s ease-out',
 				'slide-in-left': 'slide-in-left 0.3s ease-out',
+				'slide-in-bottom': 'slide-in-bottom 0.3s ease-out',
 				'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
 				float: 'float 3s ease-in-out infinite'
 			},
@@ -125,7 +138,15 @@ export default {
 				sans: ['SF Pro Display', 'system-ui', 'sans-serif'],
 				display: ['SF Pro Display', 'system-ui', 'sans-serif'],
 				mono: ['SF Mono', 'monospace']
-			}
+			},
+			// Mobile optimizations
+			screens: {
+				'xs': '480px',
+				sm: '640px',
+				md: '768px',
+				lg: '1024px',
+				xl: '1280px',
+			},
 		}
 	},
 	plugins: [require("tailwindcss-animate")],
