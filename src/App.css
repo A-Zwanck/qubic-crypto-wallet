@@ -145,8 +145,28 @@
   background-color: white !important;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+  /* Ensure menu has solid background */
+  backdrop-filter: none !important;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+  position: fixed !important;
+  z-index: 999 !important;
 }
 
 .mobile-menu-overlay {
   backdrop-filter: blur(4px);
+  z-index: 998 !important;
+}
+
+/* Create a new component to apply over mobile menu */
+.mobile-menu-wrapper {
+  position: relative;
+  z-index: 1000;
+  background-color: white;
+  width: 100%;
+  height: 100%;
+}
+
+/* Ensure mobile menu covers entire height */
+header .mobile-menu {
+  min-height: 100vh !important;
 }

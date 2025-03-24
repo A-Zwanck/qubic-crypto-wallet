@@ -1,4 +1,3 @@
-
 import * as React from "react"
 
 const MOBILE_BREAKPOINT = 768
@@ -25,6 +24,9 @@ export function useIsMobile() {
       clearTimeout(timeoutId)
       timeoutId = setTimeout(checkMobile, 100)
     }
+    
+    // Ensure we run checkMobile immediately on mount
+    checkMobile()
     
     window.addEventListener("resize", handleResize)
     
@@ -84,4 +86,54 @@ export function useScreenSize() {
   }, [])
   
   return screenSize
+}
+
+// New hook to help with managing mobile menu
+export function useMobileMenu() {
+  const [isOpen, setIsOpen] = React.useState(false)
+  const isMobile = useIsMobile()
+  
+  const openMenu = React.useCallback(() => {
+    setIsOpen(true)
+    document.body.style.overflow = 'hidden'
+  }, [])
+  
+  const closeMenu = React.useCallback(() => {
+    setIsOpen(false)
+    document.body.style.overflow = ''
+  }, [])
+  
+  const toggleMenu = React.useCallback(() => {
+    if (isOpen) {
+      closeMenu()
+    } else {
+      openMenu()
+    }
+  }, [isOpen, openMenu, closeMenu])
+  
+  // Automatically close menu when switching to desktop view
+  React.useEffect(() => {
+    if (!isMobile && isOpen) {
+      closeMenu()
+    }
+  }, [isMobile, isOpen, closeMenu])
+  
+  // Close menu on escape key
+  React.useEffect(() => {
+    const handleEscKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isOpen) {
+        closeMenu()
+      }
+    }
+    
+    window.addEventListener('keydown', handleEscKey)
+    return () => window.removeEventListener('keydown', handleEscKey)
+  }, [isOpen, closeMenu])
+  
+  return {
+    isOpen,
+    openMenu,
+    closeMenu,
+    toggleMenu
+  }
 }

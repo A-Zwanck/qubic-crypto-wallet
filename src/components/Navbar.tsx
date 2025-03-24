@@ -37,6 +37,7 @@ const Navbar = () => {
   // Close mobile menu when route changes
   useEffect(() => {
     setIsMobileMenuOpen(false);
+    document.body.style.overflow = '';
   }, [location.pathname]);
 
   // Close menu when ESC key is pressed
@@ -44,6 +45,7 @@ const Navbar = () => {
     const handleEscKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && isMobileMenuOpen) {
         setIsMobileMenuOpen(false);
+        document.body.style.overflow = '';
       }
     };
 
@@ -61,6 +63,7 @@ const Navbar = () => {
     const handleResize = () => {
       if (!isMobile && isMobileMenuOpen) {
         setIsMobileMenuOpen(false);
+        document.body.style.overflow = '';
       }
     };
     window.addEventListener('resize', handleResize);
@@ -204,7 +207,7 @@ const Navbar = () => {
       {/* Mobile Menu Overlay */}
       <div 
         className={cn(
-          "fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity duration-300",
+          "fixed inset-0 bg-black/50 mobile-menu-overlay z-40 md:hidden transition-opacity duration-300",
           isMobileMenuOpen ? "opacity-100" : "opacity-0 pointer-events-none"
         )}
         onClick={toggleMobileMenu}
@@ -214,7 +217,7 @@ const Navbar = () => {
       {/* Mobile Menu */}
       <div 
         className={cn(
-          "fixed inset-y-0 right-0 w-4/5 max-w-sm bg-white z-50 flex flex-col pt-20 pb-6 px-4 shadow-xl transition-transform duration-300 ease-in-out md:hidden",
+          "fixed inset-y-0 right-0 w-4/5 max-w-sm bg-white z-50 flex flex-col pt-20 pb-6 px-4 shadow-xl transition-transform duration-300 ease-in-out md:hidden mobile-menu",
           isMobileMenuOpen ? "translate-x-0" : "translate-x-full"
         )}
       >
