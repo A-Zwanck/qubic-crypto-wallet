@@ -229,8 +229,10 @@ export const getCurrentInvestments = async (): Promise<{ data: Investment[] | nu
     
     // Convert to array format with ROI calculations
     const investments: Investment[] = Object.entries(investmentsByProject).map(([project, data], index) => {
-      // For now, simulate ROI between 5% and 15%
-      const roiPercentage = 5 + Math.random() * 10;
+      // Use a fixed ROI calculation for consistency instead of random
+      // This ensures the same ROI is shown for a project every time
+      const projectHash = project.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      const roiPercentage = 5 + (projectHash % 10); // ROI between 5% and 15%
       const currentValue = data.invested * (1 + roiPercentage / 100);
       
       return {
@@ -250,7 +252,7 @@ export const getCurrentInvestments = async (): Promise<{ data: Investment[] | nu
   }
 };
 
-// Get total earnings
+// Get total earnings and overall wallet status
 export const getTotalEarnings = async (): Promise<{ 
   currentBalance: number;
   initialInvestment: number;
@@ -312,13 +314,14 @@ export const getTotalEarnings = async (): Promise<{
       investmentsByProject[projectName] += amount;
     });
     
-    // Calculate current value of investments (with ROI)
+    // Calculate current value of investments (with consistent ROI)
     const totalInvestedAmount = Object.values(investmentsByProject).reduce((sum, amount) => sum + amount, 0);
     let currentInvestmentsValue = 0;
     
-    // For each investment, apply a simulated ROI between 5% and 15%
+    // For each investment, apply a consistent ROI between 5% and 15% based on project name
     Object.entries(investmentsByProject).forEach(([project, invested]) => {
-      const roiPercentage = 5 + Math.random() * 10;
+      const projectHash = project.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      const roiPercentage = 5 + (projectHash % 10); // ROI between 5% and 15%
       const currentValue = invested * (1 + roiPercentage / 100);
       currentInvestmentsValue += currentValue;
     });
