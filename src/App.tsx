@@ -11,8 +11,6 @@ import Projects from "./pages/Projects";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
-// Import the refactored navbar instead of the original one
-import Navbar from "./components/NavbarRefactored";
 
 const queryClient = new QueryClient();
 
@@ -22,7 +20,6 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Navbar />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
