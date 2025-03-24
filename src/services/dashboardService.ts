@@ -284,28 +284,52 @@ export const getTotalEarnings = async (): Promise<{
       };
     }
     
-    // Calculate total deposits (initial investment)
+    // Calculate total deposits
     const totalDeposits = transactions
       .filter(t => t.type === 'deposit')
       .reduce((sum, t) => sum + parseFloat(t.amount.toString()), 0);
       
-    // Calculate total withdrawals
+    // Calculate total withdrawals that are not investments
     const totalWithdrawals = transactions
-      .filter(t => t.type === 'withdraw')
+      .filter(t => t.type === 'withdraw' && (!t.details || !t.details.startsWith('Inversión:')))
       .reduce((sum, t) => sum + parseFloat(t.amount.toString()), 0);
     
-    // Current total value (wallet balance + estimated investments value)
-    const { data: investments } = await getCurrentInvestments();
-    const investmentsValue = investments 
-      ? investments.reduce((sum, inv) => sum + inv.current, 0)
-      : 0;
+    // Get investment transactions
+    const investmentTransactions = transactions
+      .filter(t => t.type === 'withdraw' && t.details && t.details.startsWith('Inversión:'));
+      
+    // Group investments by project
+    const investmentsByProject: Record<string, number> = {};
     
-    const currentBalance = wallet.balance + investmentsValue;
+    investmentTransactions.forEach(t => {
+      const projectName = t.details?.replace('Inversión:', '').trim() || '';
+      const amount = parseFloat(t.amount.toString());
+      
+      if (!investmentsByProject[projectName]) {
+        investmentsByProject[projectName] = 0;
+      }
+      
+      investmentsByProject[projectName] += amount;
+    });
     
-    // Initial investment (total deposits)
-    const initialInvestment = totalDeposits;
+    // Calculate current value of investments (with ROI)
+    const totalInvestedAmount = Object.values(investmentsByProject).reduce((sum, amount) => sum + amount, 0);
+    let currentInvestmentsValue = 0;
     
-    // Total earnings calculation
+    // For each investment, apply a simulated ROI between 5% and 15%
+    Object.entries(investmentsByProject).forEach(([project, invested]) => {
+      const roiPercentage = 5 + Math.random() * 10;
+      const currentValue = invested * (1 + roiPercentage / 100);
+      currentInvestmentsValue += currentValue;
+    });
+    
+    // Initial investment is the net deposits (deposits - non-investment withdrawals)
+    const initialInvestment = totalDeposits - totalWithdrawals;
+    
+    // Current balance is wallet balance + current value of investments
+    const currentBalance = wallet.balance + currentInvestmentsValue;
+    
+    // Total earnings calculation (current value - initial investment)
     const totalEarnings = currentBalance - initialInvestment;
     
     // Calculate earnings percentage
