@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -13,6 +14,7 @@ const Navbar = () => {
   const [user, setUser] = useState<any>(null);
   const location = useLocation();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { toast } = useToast();
 
   // Check if user is authenticated
@@ -32,40 +34,83 @@ const Navbar = () => {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  // Close menu when ESC key is pressed
+  useEffect(() => {
+    const handleEscKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isMobileMenuOpen) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscKey);
+    return () => window.removeEventListener('keydown', handleEscKey);
+  }, [isMobileMenuOpen]);
+
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
     };
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+    
+    // Close mobile menu when resizing from mobile to desktop
+    const handleResize = () => {
+      if (!isMobile && isMobileMenuOpen) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [isMobile, isMobileMenuOpen]);
   
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
+    
+    // Prevent scrolling when menu is open
+    if (!isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+  };
+  
+  const handleLinkClick = () => {
+    if (isMobile) {
+      setIsMobileMenuOpen(false);
+      document.body.style.overflow = '';
+    }
   };
   
   const handleLogout = async () => {
     try {
-      // Cerrar el menú móvil primero
-      setIsMobileMenuOpen(false);
+      // Close mobile menu first
+      handleLinkClick();
       
-      // Obtener la sesión actual antes de cerrarla
+      // Get current session before closing it
       const { data: sessionData } = await supabase.auth.getSession();
       
-      // Solo intentar cerrar sesión si hay una sesión activa
+      // Only try to sign out if there is an active session
       if (sessionData && sessionData.session) {
         await supabase.auth.signOut();
         
-        // Mostrar toast de éxito
+        // Show success toast
         toast({
           title: 'Sesión cerrada',
           description: 'Has cerrado sesión correctamente',
         });
         
-        // Redirigir a la página de inicio
+        // Redirect to home page
         navigate('/');
       } else {
-        // Si no hay sesión, simplemente redirigir y mostrar un mensaje
+        // If no session, just redirect and show a message
         toast({
           title: 'Información',
           description: 'No hay una sesión activa para cerrar',
@@ -75,9 +120,9 @@ const Navbar = () => {
     } catch (error: any) {
       console.error('Error al cerrar sesión:', error);
       
-      // Verificar si el error es por sesión no encontrada y manejar ese caso
+      // Check if error is for session not found and handle that case
       if (error?.name === 'AuthSessionMissingError') {
-        // Simplemente redirigir al inicio si no hay sesión
+        // Simply redirect to home if no session
         toast({
           title: 'Información',
           description: 'Sesión no encontrada, redirigiendo al inicio',
@@ -86,7 +131,7 @@ const Navbar = () => {
         return;
       }
       
-      // Para otros errores, mostrar un mensaje genérico
+      // For other errors, show a generic message
       toast({
         title: 'Error',
         description: 'Hubo un problema al cerrar la sesión',
@@ -101,7 +146,7 @@ const Navbar = () => {
     <header className={cn("fixed top-0 w-full z-50 transition-all duration-300 py-4 px-4 md:px-8", isScrolled ? "bg-white/90 backdrop-blur-md shadow-sm" : "bg-transparent")}>
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Logo */}
-        <Link to="/" className="flex items-center">
+        <Link to="/" className="flex items-center" onClick={handleLinkClick}>
           <img src="/lovable-uploads/b03c2db2-fc71-4f87-adb6-a8bf8b75a9fd.png" alt="Qubic Logo" className="h-7 mr-2" />
           <span className="font-bold text-xl md:text-2xl text-qubic-blue">WALLET</span>
         </Link>
@@ -146,13 +191,33 @@ const Navbar = () => {
         </nav>
 
         {/* Mobile Menu Button */}
-        <button className="md:hidden text-qubic-black/80 focus:outline-none" onClick={toggleMobileMenu}>
+        <button 
+          className="md:hidden text-qubic-black/80 focus:outline-none p-2" 
+          onClick={toggleMobileMenu}
+          aria-expanded={isMobileMenuOpen}
+          aria-label="Toggle navigation menu"
+        >
           {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
       </div>
 
+      {/* Mobile Menu Overlay */}
+      <div 
+        className={cn(
+          "fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity duration-300",
+          isMobileMenuOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        )}
+        onClick={toggleMobileMenu}
+        aria-hidden="true"
+      />
+
       {/* Mobile Menu */}
-      <div className={cn("fixed inset-0 bg-white z-40 flex flex-col pt-20 pb-6 px-4 transition-transform duration-300 ease-in-out md:hidden", isMobileMenuOpen ? "translate-x-0" : "translate-x-full")}>
+      <div 
+        className={cn(
+          "fixed inset-y-0 right-0 w-4/5 max-w-sm bg-white z-50 flex flex-col pt-20 pb-6 px-4 shadow-xl transition-transform duration-300 ease-in-out md:hidden",
+          isMobileMenuOpen ? "translate-x-0" : "translate-x-full"
+        )}
+      >
         <nav className="flex flex-col space-y-4">
           {isAuthenticated ? (
             <>
@@ -162,8 +227,8 @@ const Navbar = () => {
                     <div className="bg-qubic-blue/10 rounded-full p-2 mr-3">
                       <User size={24} className="text-qubic-blue" />
                     </div>
-                    <div>
-                      <div className="font-medium text-qubic-black">{user.email}</div>
+                    <div className="truncate">
+                      <div className="font-medium text-qubic-black truncate">{user.email}</div>
                     </div>
                   </div>
                 </div>
@@ -172,21 +237,21 @@ const Navbar = () => {
               <Link 
                 to="/wallet" 
                 className={cn("text-lg py-2 border-b border-gray-100 text-qubic-black/80", location.pathname === '/wallet' && "text-qubic-blue font-medium")} 
-                onClick={() => setIsMobileMenuOpen(false)}
+                onClick={handleLinkClick}
               >
                 Wallet
               </Link>
               <Link 
                 to="/projects" 
                 className={cn("text-lg py-2 border-b border-gray-100 text-qubic-black/80", location.pathname === '/projects' && "text-qubic-blue font-medium")} 
-                onClick={() => setIsMobileMenuOpen(false)}
+                onClick={handleLinkClick}
               >
                 Proyectos DeFi
               </Link>
               <Link 
                 to="/dashboard" 
                 className={cn("text-lg py-2 border-b border-gray-100 text-qubic-black/80", location.pathname === '/dashboard' && "text-qubic-blue font-medium")} 
-                onClick={() => setIsMobileMenuOpen(false)}
+                onClick={handleLinkClick}
               >
                 Dashboard
               </Link>
@@ -203,14 +268,14 @@ const Navbar = () => {
               <Link 
                 to="/login" 
                 className="btn-qubic-outline w-full text-center mb-2" 
-                onClick={() => setIsMobileMenuOpen(false)}
+                onClick={handleLinkClick}
               >
                 Iniciar sesión
               </Link>
               <Link 
                 to="/login" 
                 className="btn-qubic w-full text-center" 
-                onClick={() => setIsMobileMenuOpen(false)}
+                onClick={handleLinkClick}
               >
                 Crear cuenta
               </Link>
